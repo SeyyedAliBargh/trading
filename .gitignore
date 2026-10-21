@@ -1,0 +1,72 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime state (live)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite*
+STOP
+*.pid
+
+# Raw logs and caches
+logs/
+*.log
+cache/
+backtest/data/raw/
+
+# AI coding agents (Claude Code, Cursor, Codex, Aider, ...)
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.mcp.json
+.cursor/
+.cursorrules
+.cursorignore
+.windsurf/
+.windsurfrules
+.codex/
+.gemini/
+.aider*
+.continue/
+.cline/
+.clinerules
+.roo/
+.roorules
+.kiro/
+.github/copilot-instructions.md
+.agent/
+.agents/
+.specify/
+.taskmaster/
+.superpowers/
+agent-notes/
+scratch/
+tmp/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker local overrides
+docker-compose.override.yml
