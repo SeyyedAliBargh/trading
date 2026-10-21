@@ -70,3 +70,8 @@ Thumbs.db
 
 # Docker local overrides
 docker-compose.override.yml
+
+# Skeleton (step 1): any SQLite db file, runtime data dir, raw sample dump
+*.db
+data/
+docs/samples/markets_raw.json
