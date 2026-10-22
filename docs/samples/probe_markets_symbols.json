@@ -1,0 +1,50 @@
+[
+  {
+    "symbol": "BTCTMN",
+    "price_precision": 0,
+    "amount_precision": 8,
+    "flags": [],
+    "is_otc": true,
+    "is_market_type_enable": true,
+    "is_zero_fee": false,
+    "quote_volume_24h": 114584356710.41783,
+    "otc_min_notional": 90000,
+    "otc_max_notional": 400000000
+  },
+  {
+    "symbol": "ETHTMN",
+    "price_precision": 0,
+    "amount_precision": 5,
+    "flags": [],
+    "is_otc": true,
+    "is_market_type_enable": true,
+    "is_zero_fee": false,
+    "quote_volume_24h": 81459383308.25429,
+    "otc_min_notional": 90000,
+    "otc_max_notional": 200000000
+  },
+  {
+    "symbol": "XRPTMN",
+    "price_precision": 0,
+    "amount_precision": 1,
+    "flags": [],
+    "is_otc": true,
+    "is_market_type_enable": false,
+    "is_zero_fee": false,
+    "quote_volume_24h": 31372692875.7,
+    "otc_min_notional": 90000,
+    "otc_max_notional": 50000000
+  },
+  {
+    "symbol": "SOLTMN",
+    "price_precision": 0,
+    "amount_precision": 5,
+    "flags": [],
+    "is_otc": true,
+    "is_market_type_enable": false,
+    "is_zero_fee": false,
+    "quote_volume_24h": 26657257764.09184,
+    "otc_min_notional": 90000,
+    "otc_max_notional": 40000000
+  }
+]

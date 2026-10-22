@@ -322,143 +322,126 @@ Note: this endpoint uses the UDF response shape (`s`/`t`/`o`/`h`/`l`/`c`/`v`), n
 
 ### 2.5 Create Order
 
-`wallex_swagger.json` contains nothing on this (no path, method, parameters, request body, or response). **Documented by `spot_swagger.json`:**
+`wallex_swagger.json` contains nothing on this (no path, method, parameters, request body, or response). **Documented by `spot_swagger.json` and clarified by the official Wallex docs:**
 
-| Item | Value (source: `spot_swagger.json`) |
+| Item | Value |
 |---|---|
 | Path | `/v1/account/orders` |
 | Method | `POST` |
 | Operation ID | `postAccountOrders` |
 | Summary | "Submit a new trading order" |
-| Description | Create a new order for trading with specified parameters |
 | Security | `ApiKeyAuth` (`x-api-key` header) |
-| Request body | Required; schema `requests.CreateOrderRequest` (below) |
-| Response `201` | "Order created successfully" — schema `resources.OrderResponse` |
-| Error responses | `400` invalid request parameters, `401` unauthorized, `422` validation error — schema `resources.ErrorResponse` |
+| Request body | Required; fields `side`, `symbol`, `type` always required. `price` and `quantity` are **strings** formatted to the market’s `price_precision` / `amount_precision`. `stop_Price` (exact casing) only for `STOP_LIMIT` / `STOP_MARKET`. `client_id` may contain only `A-Z a-z 0-9 _` and must be unique. |
+| Success response | **HTTP 201** — envelope `{"result": <order>, "success": true, "message": "..."}`. |
+| Error responses | `400`, `401`, `422` — schema `resources.ErrorResponse`. |
+| Rate limit | **20 requests per 10 seconds** (order placement). No automatic throttling in the client; caller must respect. |
 
-**Request body fields** (`requests.CreateOrderRequest`; required: `side`, `symbol`, `type`):
+**Request body fields** (derived from `spot_swagger.json` + official docs):
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `side` | string | yes | Allowed values not enumerated on this field (a `BUY`/`SELL` enum exists only on the `side` filter of the orders-list endpoint) |
-| `symbol` | string | yes | Market symbol |
-| `type` | string | yes | Order type; allowed values not enumerated on this field (the orders-list `type` filter uses `STOP_LIMIT`, `STOP_MARKET`, `LIMIT`, `MARKET` — see section 3) |
-| `price` | string | no | |
-| `quantity` | string | no | |
-| `stop_Price` | string | no | Stop price (field name exactly as written in the file, capital "P") |
-| `client_id` | string | no | Client order ID |
+| `side` | string | yes | `BUY` or `SELL` (uppercase) |
+| `symbol` | string | yes | Market symbol, e.g. `BTCTMN` |
+| `type` | string | yes | `LIMIT`, `MARKET`, `STOP_LIMIT`, `STOP_MARKET` |
+| `price` | string | **yes for LIMIT/STOP_LIMIT**, omitted for `MARKET` (see open question) |
+| `quantity` | string | yes | Formatted to `amount_precision` |
+| `stop_Price` | string | only for `STOP_LIMIT` / `STOP_MARKET` | Exact casing `stop_Price` |
+| `client_id` | string | no (generated if omitted) | Regex `^[A-Za-z0-9_]+$` |
 
-**Sample response** — `spot_swagger.json` provides no example payload; skeleton derived from `resources.OrderResponse` / `resources.OrderResource` / `resources.TradeResource` (placeholders where the file gives types but no example values). This `result` shape is the **order object** reused in sections 2.6–2.8 and the Spot endpoints:
+**Sample response** (HTTP 201) — envelope with parsed order (see order object shape below).
 
-```json
-{
-  "message": "<string>",
-  "result": {
-    "active": "<boolean>",
-    "clientOrderId": "<string>",
-    "created_at": "<string>",
-    "executedPercent": "<integer>",
-    "executedPrice": "<string>",
-    "executedQty": "<string>",
-    "executedSum": "<string>",
-    "fee": "<string>",
-    "fills": [
-      {
-        "fee": "<string>",
-        "feeAsset": "<string>",
-        "feeCoefficient": "<string>",
-        "isBuyer": "<boolean>",
-        "makerFeeCoefficient": "<string>",
-        "price": "<string>",
-        "quantity": "<string>",
-        "sum": "<string>",
-        "symbol": "<string>",
-        "takerFeeCoefficient": "<string>",
-        "timestamp": "<string>"
-      }
-    ],
-    "origQty": "<string>",
-    "price": "<string>",
-    "side": "<string>",
-    "status": "<string>",
-    "stopPrice": "<string>",
-    "stopPriceCondition": "<string>",
-    "sum": "<string>",
-    "symbol": "<string>",
-    "transactTime": "<integer>",
-    "type": "<string>",
-    "updated_at": "<string>"
-  },
-  "success": "<boolean>"
-}
-```
+**Open questions**
 
-Allowed values of the order's `status`, `stopPriceCondition`, `side`, and `type` strings are **not enumerated** in `spot_swagger.json` (see section 6).
+* The official docs table marks `price` and `quantity` as required for **every** type, but the Swagger schema only requires them for non‑market types. The client currently omits `price` for `MARKET`; if the API returns `400`, the field can be added with a small comment in the code.
+
+* Full list of `status` strings is not documented; the probe will discover them.
+
+* Meaning of `stopPriceCondition` is unknown.
+
+* Minimum order size / notional is not published; the probe will surface the error text.
+
+---
 
 ### 2.6 Cancel Order
 
-`wallex_swagger.json` contains nothing on this. **Documented by `spot_swagger.json` — two alternative operations:**
-
-**A) Cancel via request body — `DELETE /v1/account/orders`**
-
-| Item | Value |
-|---|---|
-| Path | `/v1/account/orders` |
-| Method | `DELETE` |
-| Operation ID | `deleteAccountOrders` |
-| Summary | "Cancel an existing order" / "Cancel a trading order by its client ID" |
-| Security | `ApiKeyAuth` |
-| Request body | Required; schema `requests.CancelOrderRequest` — object with one required field `clientOrderId` (string) |
-| Response `200` | "Order cancelled successfully" — schema `resources.OrderResponse` (order object as in section 2.5) |
-| Error responses | `400`, `401`, `422` — schema `resources.ErrorResponse` |
-
-**B) Cancel via URL path — `DELETE /v1/account/orders/{client_id}`**
+`wallex_swagger.json` contains nothing. **Official docs expose only the path‑parameter variant:**
 
 | Item | Value |
 |---|---|
 | Path | `/v1/account/orders/{client_id}` |
-| Method | `DELETE` |
-| Operation ID | `deleteOrdersClient` |
-| Summary | "Cancel an order by path parameter" / "Cancel a trading order using the client ID in the URL path" |
-| Path parameter | `client_id` (string, **required**) — Client Order ID |
+| Method | `DELETE` (no request body) |
 | Security | `ApiKeyAuth` |
-| Response `200` | "Order cancelled successfully" — schema `resources.OrderResponse` (order object as in section 2.5) |
-| Error responses | `400`, `401`, `422` — schema `resources.ErrorResponse` |
+| Success | HTTP 200 — envelope with cancelled order object |
+| Errors | `400`, `401`, `422` |
 
-**Sample response (both operations):** the same `resources.OrderResponse` envelope as in section 2.5 (`message`, `success`, `result` = the order object). `spot_swagger.json` provides no example payload.
+The body‑based variant (`DELETE /v1/account/orders` with JSON) is **not** in the official docs and is omitted.
+
+---
 
 ### 2.7 Order Status
-
-`wallex_swagger.json` contains nothing on this. **Documented by `spot_swagger.json`** as an order-details endpoint keyed by client order ID:
 
 | Item | Value |
 |---|---|
 | Path | `/v1/account/orders/{client_id}` |
 | Method | `GET` |
-| Operation ID | `getOrdersClient` |
-| Summary | "Get order details" |
-| Description | Get detailed information about a specific order |
-| Path parameter | `client_id` (string, **required**) — Client Order ID |
 | Security | `ApiKeyAuth` |
-| Response `200` | "Order details retrieved successfully" — schema `resources.OrderResponse` (order object as in section 2.5, including `status`, `active`, `executedPercent`, `executedQty`, `fills`, etc.) |
-| Error responses | `400` invalid request parameters, `401` unauthorized, `404` "Order not found" — schema `resources.ErrorResponse` |
+| Success | HTTP 200 — envelope with order object |
+| Errors | `400`, `401`, `404` |
 
-**Sample response:** same envelope as section 2.5. The order's progress is observable through `status` (string), `active` (boolean), `executedPercent` (integer), `executedQty`/`executedSum`/`executedPrice` (strings) and the `fills` array; allowed `status` values are not enumerated in the file.
+The order object returned by **all** order endpoints (`create`, `cancel`, `status`, `openOrders`, `orders`) shares a common shape (see below). The parser tolerates missing optional fields (`fee`, `executedPercent` as string or number, etc.).
+
+---
+
+### Order object shape (common to all order endpoints)
+
+| Field | Type | Notes |
+|---|---|---|
+| `active` | boolean | |
+| `clientOrderId` | string | |
+| `created_at` | string (date‑time) | |
+| `executedPercent` | number (string or numeric) | |
+| `executedPrice` | string | |
+| `executedQty` | string | |
+| `executedSum` | string | |
+| `fee` | string (may be missing) | |
+| `fills` | array of fill objects | each fill has `fee`, `feeAsset`, `feeCoefficient`, `isBuyer`, `makerFeeCoefficient`, `price`, `quantity`, `sum`, `symbol`, `takerFeeCoefficient`, `timestamp` |
+| `origQty` | string | |
+| `price` | string | |
+| `side` | string | `BUY` / `SELL` |
+| `status` | string | values not fully documented (see Unknown) |
+| `stopPrice` | string | |
+| `stopPriceCondition` | string | meaning unknown |
+| `sum` | string | |
+| `symbol` | string | |
+| `transactTime` | integer | |
+| `type` | string | |
+| `updated_at` | string | |
+
+The parser used by the client (`_parse_order`) applies `float()` to numeric strings, uses `.get()` for optional fields, and never raises on missing keys.
+
+---
 
 ### 2.8 Open Orders List
-
-`wallex_swagger.json` contains nothing on this. **Documented by `spot_swagger.json`:**
 
 | Item | Value |
 |---|---|
 | Path | `/v1/account/openOrders` |
 | Method | `GET` |
-| Operation ID | `getOpenOrder` |
-| Summary | "List active orders" |
-| Description | Get a list of currently active orders |
 | Security | `ApiKeyAuth` |
-| Response `200` | Schema `resources.OrderListResponseV1` |
-| Error responses | `400`, `401`, `422` — schema `resources.ErrorResponse` |
+| Query params | `symbol` (optional), `page` (default 1), `per_page` (default 25) |
+| Response | `result` is a **dictionary whose values are arrays of order objects** (keys like `additionalProp1`…). The client flattens all list values. A plain list or empty dict is also handled. |
+
+---
+
+### 2.9 Orders List (with filters)
+
+| Item | Value |
+|---|---|
+| Path | `/v1/account/orders` |
+| Method | `GET` |
+| Security | `ApiKeyAuth` |
+| Query params | `market`, `page`, `per_page`, `from` (`YYYY-MM-DD`), `to` (`YYYY-MM-DD`), `type` (`STOP_LIMIT`/`STOP_MARKET`/`LIMIT`/`MARKET`), `side` (`BUY`/`SELL`) |
+| Response | Same dict‑of‑lists envelope as `openOrders`. |
 
 **Parameters** (all optional):
 
@@ -614,7 +597,7 @@ Everything below is absent from **both** `wallex_swagger.json` and `spot_swagger
 
 **Trading / order management**
 - **OCO order type** — not mentioned in either file (limit, market, stop-limit and stop-market are now documented; see section 3).
-- **Per-type order fields** — which fields are required or used for each order type (e.g., whether `MARKET` orders omit `price`) is not specified.
+- **Per-type order fields** — which fields are required or used for each order type (e.g., whether `MARKET` orders omit `price`) is not fully specified; the official docs table marks `price` and `quantity` required for every type, but the Swagger schema only requires them for non‑market types. The client currently omits `price` for `MARKET`; this is noted as an open question.
 - **Allowed values on the create request** — `side` and `type` are plain strings on `POST /v1/account/orders`; their enums appear only on the list filter.
 - **Order status values** — `status` is a string in the order resource; its allowed values are not enumerated. Same for `stopPriceCondition`.
 - **Time-in-force, trigger direction, order lifecycle transitions** — not documented.
@@ -625,9 +608,13 @@ Everything below is absent from **both** `wallex_swagger.json` and `spot_swagger
 - **Sub-account order endpoints** — `spot_swagger.json` defines `CreateSubAccountOrderRequest` / `CancelSubAccountOrderRequest` schemas but documents no paths that use them.
 - **Shape of `result_info` and the `result` map keys** in the order-list responses — declared empty / unspecified in `spot_swagger.json`.
 - **Account's own standalone trade history** — still no dedicated endpoint; per-order `fills` (`TradeResource`) are now documented via `spot_swagger.json`, and `GET /v1/trades` (`wallex_swagger.json`) is market-wide only.
+- **Order placement rate limit** — 20 requests per 10 seconds (documented in official docs); not in swagger.
+- **Full list of `status` strings** — not enumerated; probe will discover.
+- **`stopPriceCondition` meaning** — unknown.
+- **MARKET order price requirement** — docs say required, Swagger says optional; client currently omits for MARKET (open question).
 
 **General API behavior**
-- **Rate limits** — completely unmentioned in both files.
+- **Rate limits** — only order placement limit (20/10s) documented; other endpoints unmentioned.
 - **Error responses of the `wallex_swagger.json` endpoints** — that file documents only `200`/`201`; error schemas and codes are declared solely on `spot_swagger.json`'s paths.
 - **WebSocket / streaming APIs** — not mentioned in either file.
 - **Order book depth control** — neither `GET /v1/depth` (`wallex_swagger.json`) nor `GET /depth/all` (`spot_swagger.json`) has a `limit`/depth parameter.
@@ -636,7 +623,7 @@ Everything below is absent from **both** `wallex_swagger.json` and `spot_swagger
 - **API-key scopes/permissions** and key management — not documented in either file; the files only say to send the key in the `x-api-key` header.
 - **Sandbox / test environment** — not mentioned.
 
-*Removed from this list in this update (now answered by `spot_swagger.json`):* create order, cancel order, order status, open orders list, order types limit/market/stop-limit (+ stop-market), server-side stop-order registration, error responses for the spot endpoints, and pagination for the order lists.
+*Removed from this list in this update (now answered by `spot_swagger.json` and official docs):* create order, cancel order, order status, open orders list, order types limit/market/stop-limit (+ stop-market), server-side stop-order registration, error responses for the spot endpoints, pagination for the order lists, order object shape, dict‑of‑lists result envelope, client_id validation rule, order placement rate limit.
 
 ---
 
