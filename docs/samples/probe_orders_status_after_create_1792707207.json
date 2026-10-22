@@ -1,0 +1,49 @@
+{
+  "order": {
+    "active": true,
+    "clientOrderId": "ag_1792707206_XRPTMN_1",
+    "created_at": "2026-10-22T22:13:27.000000Z",
+    "executedPercent": 0.0,
+    "executedPrice": 284000.0,
+    "executedQty": 0.0,
+    "executedSum": 0.0,
+    "fee": 0.0,
+    "fills": [],
+    "origQty": 0.3,
+    "price": 284000.0,
+    "side": "BUY",
+    "status": "NEW",
+    "stopPrice": null,
+    "stopPriceCondition": null,
+    "sum": 85200.0,
+    "symbol": "XRPTMN",
+    "transactTime": 1792707207.0,
+    "type": "LIMIT",
+    "updated_at": "2026-10-22T22:13:27.000000Z"
+  },
+  "raw": {
+    "result": {
+      "symbol": "XRPTMN",
+      "type": "LIMIT",
+      "side": "BUY",
+      "clientOrderId": "ag_1792707206_XRPTMN_1",
+      "price": "284000.0000000000000000",
+      "origQty": "0.3000000000000000",
+      "origSum": "85200.0000000000000000",
+      "executedSum": "0.0000000000000000",
+      "executedQty": "0.0000000000000000",
+      "executedPrice": "284000.0000000000000000",
+      "sum": "85200.0000000000000000",
+      "fee": "0.0000000000000000",
+      "executedPercent": 0,
+      "status": "NEW",
+      "active": true,
+      "fills": [],
+      "transactTime": 1792707207,
+      "created_at": "2026-10-22T22:13:27.000000Z",
+      "updated_at": "2026-10-22T22:13:27.000000Z"
+    },
+    "message": "عملیات موفقیت‌آمیز بود.",
+    "success": true
+  }
+}
