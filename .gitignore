@@ -18,10 +18,7 @@ venv/
 htmlcov/
 
 # Runtime state (live)
-data/*.db
-data/*.db-wal
-data/*.db-shm
-data/*.sqlite*
+runtime/
 STOP
 *.pid
 
@@ -35,7 +32,6 @@ backtest/data/raw/
 .claude/
 CLAUDE.md
 CLAUDE.local.md
-AGENTS.md
 GEMINI.md
 .mcp.json
 .cursor/
@@ -71,7 +67,6 @@ Thumbs.db
 # Docker local overrides
 docker-compose.override.yml
 
-# Skeleton (step 1): any SQLite db file, runtime data dir, raw sample dump
+# Skeleton (step 1): any SQLite db file, raw sample dump
 *.db
-data/
 docs/samples/markets_raw.json

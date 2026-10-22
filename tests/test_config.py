@@ -17,14 +17,14 @@ import config
 
 
 def make_config(**sections: dict[str, Any]) -> config.Config:
-    """A clean Config (placeholders replaced) with optional per-section overrides.
+    """A clean Config (symbol placeholders replaced) with optional per-section overrides.
 
     Usage: make_config(risk={"stop_pct_min": 0.03}, trading={"SYMBOLS": ["<X>"]})
     """
     base = config.CONFIG
     parts: dict[str, Any] = {
         "exchange": base.exchange,
-        "llm": dataclasses.replace(base.llm, MODELS=["model-a", "model-b", "model-c"]),
+        "llm": base.llm,  # default MODELS are real names now (no placeholders)
         "trading": dataclasses.replace(base.trading, SYMBOLS=["BTCTMN", "BTCUSDT"]),
         "risk": base.risk,
         "storage": base.storage,
@@ -45,7 +45,7 @@ class TestConfigLoads:
         assert config.CONFIG.exchange.request_timeout_sec == 10
         assert config.CONFIG.llm.LLM_BASE_URL == "https://ai.boxapi.ir/ai/v1"
         assert config.CONFIG.llm.per_model_timeout_sec == 20
-        assert len(config.CONFIG.llm.MODELS) == 3
+        assert config.CONFIG.llm.MODELS == ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.4-mini"]
         assert config.CONFIG.llm.min_agreeing == 2
         assert config.CONFIG.trading.DECISION_INTERVAL_SEC == 900
         assert config.CONFIG.trading.GUARDIAN_INTERVAL_SEC == 10
@@ -56,6 +56,7 @@ class TestConfigLoads:
         assert config.CONFIG.trading.entry_limit_ticks_above == 0
         assert config.CONFIG.trading.entry_fill_timeout_sec == 10
         assert config.CONFIG.trading.paper_initial_capital_tmn == 5_000_000
+        assert config.CONFIG.trading.paper_fallback_fee_rate == 0.005
         assert config.CONFIG.trading.SLTP_MANUAL is False
         assert config.CONFIG.trading.manual_stop_pct == 0.015
         assert config.CONFIG.trading.manual_target_pct == 0.03
@@ -72,7 +73,13 @@ class TestConfigLoads:
         assert config.CONFIG.risk.min_confidence == 0.6
         assert config.CONFIG.risk.min_order_tmn is None
         assert config.CONFIG.risk.initial_capital_tmn == 5_000_000
-        assert config.CONFIG.storage.DB_PATH == "data/agent.db"
+        assert config.CONFIG.storage.DB_PATH == "runtime/agent.db"
+
+    def test_paper_fallback_fee_rate_is_sane(self):
+        # Conservative placeholder taker fee for paper fills: positive, below 0.05.
+        fee = config.CONFIG.trading.paper_fallback_fee_rate
+        assert isinstance(fee, (int, float))
+        assert 0 < fee < 0.05
 
 
 class TestParseBool:
@@ -159,9 +166,12 @@ class TestValidateWarnings:
         with pytest.warns(UserWarning, match="MODELS"):
             config.validate_config(make_config(llm={"MODELS": ["<MODEL_1>", "<MODEL_2>"]}))
 
-    def test_default_config_only_warns_never_raises(self):
-        with pytest.warns(UserWarning):
-            config.validate_config(config.CONFIG)  # placeholders only
+    def test_default_config_warns_for_symbols_not_models(self):
+        # Default MODELS are real names now: only the SYMBOLS placeholder warning remains.
+        with pytest.warns(UserWarning, match="SYMBOLS") as record:
+            config.validate_config(config.CONFIG)  # never raises
+        messages = [str(w.message) for w in record]
+        assert not any("MODELS" in m for m in messages)
 
 
 class TestSecretsNeverLeak:

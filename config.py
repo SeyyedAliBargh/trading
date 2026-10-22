@@ -78,8 +78,8 @@ class LlmConfig:
     LLM_BASE_URL: str = "https://ai.boxapi.ir/ai/v1"
     # BoxAPI key from .env (BOXAPI_API_KEY); sent as "Authorization: Bearer <key>".
     api_key: str | None = None
-    # Model names that vote on every decision (owner must replace the placeholders).
-    MODELS: list[str] = field(default_factory=lambda: ["<MODEL_1>", "<MODEL_2>", "<MODEL_3>"])
+    # Model names that vote on every decision (one request each, in parallel).
+    MODELS: list[str] = field(default_factory=lambda: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.4-mini"])
     # Seconds before a single model call is aborted (one request per model).
     per_model_timeout_sec: float = 20
     # How many models must agree on the same direction for a signal to count.
@@ -112,6 +112,8 @@ class TradingConfig:
     entry_fill_timeout_sec: int = 10
     # Starting balance of the paper account, in toman (paper mode only).
     paper_initial_capital_tmn: float = 5_000_000
+    # conservative placeholder taker fee used in paper mode only if GET /v1/account/fee fails; replace after the real fee is known
+    paper_fallback_fee_rate: float = 0.005
     # True: fixed manual_stop_pct/manual_target_pct; False: median of the agreeing models.
     SLTP_MANUAL: bool = False
     # Fixed stop-loss as a fraction of the position value (SLTP_MANUAL mode only).
@@ -156,8 +158,8 @@ class RiskConfig:
 class StorageConfig:
     """SQLite state storage."""
 
-    # Path of the SQLite database (WAL mode) that holds all bot state.
-    DB_PATH: str = "data/agent.db"
+    # Path of the SQLite database (WAL mode) in the git-ignored runtime/ directory.
+    DB_PATH: str = "runtime/agent.db"
 
 
 @dataclass(frozen=True)
