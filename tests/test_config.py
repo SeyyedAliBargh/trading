@@ -17,15 +17,15 @@ import config
 
 
 def make_config(**sections: dict[str, Any]) -> config.Config:
-    """A clean Config (symbol placeholders replaced) with optional per-section overrides.
+    """A Config built from the placeholder-free defaults, with optional per-section overrides.
 
     Usage: make_config(risk={"stop_pct_min": 0.03}, trading={"SYMBOLS": ["<X>"]})
     """
     base = config.CONFIG
     parts: dict[str, Any] = {
         "exchange": base.exchange,
-        "llm": base.llm,  # default MODELS are real names now (no placeholders)
-        "trading": dataclasses.replace(base.trading, SYMBOLS=["BTCTMN", "BTCUSDT"]),
+        "llm": base.llm,
+        "trading": base.trading,
         "risk": base.risk,
         "storage": base.storage,
     }
@@ -47,6 +47,7 @@ class TestConfigLoads:
         assert config.CONFIG.llm.per_model_timeout_sec == 20
         assert config.CONFIG.llm.MODELS == ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.4-mini"]
         assert config.CONFIG.llm.min_agreeing == 2
+        assert config.CONFIG.trading.SYMBOLS == ["BTCTMN", "ETHTMN", "SOLTMN", "XRPTMN"]
         assert config.CONFIG.trading.DECISION_INTERVAL_SEC == 900
         assert config.CONFIG.trading.GUARDIAN_INTERVAL_SEC == 10
         assert config.CONFIG.trading.CLOSE_POSITIONS_ON_SHUTDOWN is False
@@ -55,6 +56,10 @@ class TestConfigLoads:
         assert config.CONFIG.trading.MODELS_VOTE_ON_EXIT is True
         assert config.CONFIG.trading.entry_limit_ticks_above == 0
         assert config.CONFIG.trading.entry_fill_timeout_sec == 10
+        assert config.CONFIG.trading.event_trigger_enabled is True
+        assert config.CONFIG.trading.trigger_move_pct == 0.015
+        assert config.CONFIG.trading.trigger_window_sec == 300
+        assert config.CONFIG.trading.trigger_cooldown_sec == 180
         assert config.CONFIG.trading.paper_initial_capital_tmn == 5_000_000
         assert config.CONFIG.trading.paper_fallback_fee_rate == 0.005
         assert config.CONFIG.trading.SLTP_MANUAL is False
@@ -142,6 +147,18 @@ class TestValidateValueErrors:
         with pytest.raises(ValueError, match="min_agreeing"):
             config.validate_config(make_config(llm={"MODELS": ["only-model"]}))
 
+    def test_trigger_move_pct_must_be_positive(self):
+        with pytest.raises(ValueError, match="trigger_move_pct"):
+            config.validate_config(make_config(trading={"trigger_move_pct": 0.0}))
+
+    def test_trigger_window_sec_must_be_positive(self):
+        with pytest.raises(ValueError, match="trigger_window_sec"):
+            config.validate_config(make_config(trading={"trigger_window_sec": 0}))
+
+    def test_trigger_cooldown_sec_must_be_non_negative(self):
+        with pytest.raises(ValueError, match="trigger_cooldown_sec"):
+            config.validate_config(make_config(trading={"trigger_cooldown_sec": -1}))
+
     def test_clean_config_passes_silently(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -166,12 +183,11 @@ class TestValidateWarnings:
         with pytest.warns(UserWarning, match="MODELS"):
             config.validate_config(make_config(llm={"MODELS": ["<MODEL_1>", "<MODEL_2>"]}))
 
-    def test_default_config_warns_for_symbols_not_models(self):
-        # Default MODELS are real names now: only the SYMBOLS placeholder warning remains.
-        with pytest.warns(UserWarning, match="SYMBOLS") as record:
-            config.validate_config(config.CONFIG)  # never raises
-        messages = [str(w.message) for w in record]
-        assert not any("MODELS" in m for m in messages)
+    def test_default_config_produces_no_warnings(self):
+        # Defaults now have real symbols and models: no placeholder warning at all.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            config.validate_config(config.CONFIG)  # never raises, never warns
 
 
 class TestSecretsNeverLeak:

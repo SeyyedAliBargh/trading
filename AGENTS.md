@@ -63,6 +63,7 @@ LLMs make the trading decisions. Code builds the inputs, enforces risk, and exec
 ## Config
 - Single `config.py`: frozen dataclasses with defaults (symbols, model names, risk numbers,
   intervals, flags) and secrets loaded from `.env` via python-dotenv.
+- No module outside config.py may hardcode a symbol or assume exactly 4 symbols; loops, per-symbol locks, trigger state and the guard must all iterate over CONFIG.SYMBOLS.
 - A config snapshot WITHOUT secrets is saved in the `runs` table at every start.
 - `.env.example` lists all variable names with empty values.
 
@@ -78,6 +79,17 @@ build input (code) -> N models in parallel -> parse JSON (invalid = that model v
 -> majority of same direction else HOLD -> guard (entries) -> executor.
 Model JSON: `action` (BUY|SELL|HOLD), `confidence` (0..1), `stop_pct`, `target_pct`, `reason`.
 Models may only cite numbers present in the input.
+
+## Event trigger
+- The guardian thread already reads prices every GUARDIAN_INTERVAL_SEC.
+- For symbols without an open position, if the price moved more than `trigger_move_pct` within
+  `trigger_window_sec` and `trigger_cooldown_sec` has passed since the last trigger for that symbol,
+  it requests an off-schedule decision cycle for that symbol.
+- The cycle is the normal path (build input, parallel models, vote, entry guard, executor);
+  the trigger only wakes the models, it never decides or places orders.
+- A per-symbol lock must prevent two decision cycles for the same symbol running at the same
+  time (scheduled and triggered).
+- Every trigger is logged as an event of kind "TRIGGER" with the measured move.
 
 ## Database (SQLite, WAL, via `store/db.py` only)
 runs, api_calls, market_snapshots, decisions, llm_calls, risk_checks, orders, positions,

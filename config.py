@@ -90,8 +90,8 @@ class LlmConfig:
 class TradingConfig:
     """Trading-loop behaviour and mode."""
 
-    # Market symbols the agent may trade (owner must replace the placeholders).
-    SYMBOLS: list[str] = field(default_factory=lambda: ["<SYMBOL_1>", "<SYMBOL_2>"])
+    # Provisional; must be intersected with the organizer's allowed-market list and checked by the market probe (spread, depth).
+    SYMBOLS: list[str] = field(default_factory=lambda: ["BTCTMN", "ETHTMN", "SOLTMN", "XRPTMN"])
     # Paper mode (True): virtual toman wallet, no real orders. Live (False): real orders.
     dry_run: bool = True
     # Seconds between decision rounds (per symbol).
@@ -110,6 +110,14 @@ class TradingConfig:
     entry_limit_ticks_above: int = 0
     # Seconds to wait for the entry LIMIT BUY to fill before cancelling (then HOLD).
     entry_fill_timeout_sec: int = 10
+    # The guardian thread may start an off-schedule decision cycle for a symbol that has NO open position.
+    event_trigger_enabled: bool = True
+    # Price move within the window that fires the trigger (relative, 0.015 = 1.5%).
+    trigger_move_pct: float = 0.015
+    # Window length for measuring the move.
+    trigger_window_sec: int = 300
+    # Minimum seconds between two triggers for the same symbol.
+    trigger_cooldown_sec: int = 180
     # Starting balance of the paper account, in toman (paper mode only).
     paper_initial_capital_tmn: float = 5_000_000
     # conservative placeholder taker fee used in paper mode only if GET /v1/account/fee fails; replace after the real fee is known
@@ -212,6 +220,12 @@ def validate_config(cfg: Config) -> None:
             f"len(MODELS) ({len(cfg.llm.MODELS)}) < min_agreeing ({cfg.llm.min_agreeing}): "
             "a majority vote would be impossible"
         )
+    if t.trigger_move_pct <= 0:
+        raise ValueError(f"trigger_move_pct ({t.trigger_move_pct}) must be > 0")
+    if t.trigger_window_sec <= 0:
+        raise ValueError(f"trigger_window_sec ({t.trigger_window_sec}) must be > 0")
+    if t.trigger_cooldown_sec < 0:
+        raise ValueError(f"trigger_cooldown_sec ({t.trigger_cooldown_sec}) must be >= 0")
 
     # --- soft warnings (never raise) ----------------------------------------
     if r.target_pct_min < r.min_reward_risk * r.stop_pct_min:
