@@ -223,6 +223,59 @@ class TestPositionReads:
         assert store_db.get_last_trade_ts("ETHTMN", True) is None  # only an OPEN position
         assert store_db.get_last_trade_ts("NOPE", True) is None
 
+    def test_get_last_closed_at_any_symbol(self, db):
+        run_id = store_db.start_run("paper", {}, git_commit="test")
+        pa = store_db.insert_position(run_id, symbol="BTCTMN", dry_run=True)
+        pb = store_db.insert_position(run_id, symbol="ETHTMN", dry_run=True)
+        plive = store_db.insert_position(run_id, symbol="BTCTMN", dry_run=False)
+        assert store_db.close_position(pa, 11.0, "TAKE_PROFIT", 100.0, 0.0)
+        assert store_db.close_position(pb, 12.0, "MODEL_SELL", -50.0, 0.0)
+        assert store_db.close_position(plive, 13.0, "STOP_LOSS", -10.0, 0.0)
+
+        closed_a = store_db.get_position(pa)["closed_at"]
+        closed_b = store_db.get_position(pb)["closed_at"]
+        closed_live = store_db.get_position(plive)["closed_at"]
+
+        assert store_db.get_last_closed_at(True) == max(closed_a, closed_b)
+        assert store_db.get_last_closed_at(False) == closed_live
+
+    def test_get_last_closed_at_none_when_empty(self, db):
+        assert store_db.get_last_closed_at(True) is None
+        run_id = store_db.start_run("paper", {}, git_commit="test")
+        p = store_db.insert_position(run_id, symbol="BTCTMN", dry_run=True)
+        assert p is not None
+        assert store_db.get_last_closed_at(True) is None  # OPEN only, never closed
+
+
+class TestDecisionReads:
+    def test_recent_decisions_per_symbol_and_mode(self, db):
+        paper_run = store_db.start_run("paper", {}, git_commit="test")
+        live_run = store_db.start_run("live", {}, git_commit="test")
+        d1 = store_db.insert_decision(paper_run, symbol="BTCTMN", final_action="HOLD",
+                                      confidence=0.55)
+        d2 = store_db.insert_decision(paper_run, symbol="BTCTMN", final_action="BUY",
+                                      confidence=0.72)
+        d3 = store_db.insert_decision(paper_run, symbol="BTCTMN", final_action="SELL",
+                                      confidence=0.66)
+        d4 = store_db.insert_decision(paper_run, symbol="ETHTMN", final_action="HOLD",
+                                      confidence=0.4)
+        d5 = store_db.insert_decision(live_run, symbol="BTCTMN", final_action="HOLD",
+                                      confidence=0.9)
+        assert None not in (d1, d2, d3, d4, d5)
+
+        # most-recent-first, symbol-filtered, mode-separated via runs
+        rows = store_db.get_recent_decisions("BTCTMN", 3, "paper")
+        assert [r["id"] for r in rows] == [d3, d2, d1]
+        assert rows[0]["final_action"] == "SELL"
+        assert rows[0]["confidence"] == pytest.approx(0.66)
+
+        # limit respected
+        assert [r["id"] for r in store_db.get_recent_decisions("BTCTMN", 1, "paper")] == [d3]
+        # live decisions never leak into the paper view
+        assert [r["id"] for r in store_db.get_recent_decisions("BTCTMN", 5, "live")] == [d5]
+        assert [r["id"] for r in store_db.get_recent_decisions("ETHTMN", 5, "paper")] == [d4]
+        assert store_db.get_recent_decisions("NOPE", 5, "paper") == []
+
 
 class TestUniqueClientId:
     def test_duplicate_client_id_returns_none(self, db, capsys):

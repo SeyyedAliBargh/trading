@@ -618,7 +618,7 @@ Everything below is absent from **both** `wallex_swagger.json` and `spot_swagger
 - **Error responses of the `wallex_swagger.json` endpoints** — that file documents only `200`/`201`; error schemas and codes are declared solely on `spot_swagger.json`'s paths.
 - **WebSocket / streaming APIs** — not mentioned in either file.
 - **Order book depth control** — neither `GET /v1/depth` (`wallex_swagger.json`) nor `GET /depth/all` (`spot_swagger.json`) has a `limit`/depth parameter.
-- **Full list of candle resolutions** — still only the example text "e.g. 1, 5, 15, 60, D" (`wallex_swagger.json`).
+- **Full list of candle resolutions** — largely ANSWERED by the real probes (STEP 4b/4d): `"15"`→1-minute (up to 72h+), `"1"`→1-minute (only ≤ ~6h windows), `"60"`→hourly, `"240"`/`"720"`→aliases of `"60"`, `"1D"`/`"D"`→daily; `"3"`, `"5"`, `"30"`, `"120"`, `"180"`, `"360"`, `"W"` invalid. Only the swagger's example text remains as the "official" list.
 - **Pagination** for markets, balances, depth, and history — not documented (the order lists and IBANs do have `page`/`per_page`).
 - **API-key scopes/permissions** and key management — not documented in either file; the files only say to send the key in the `x-api-key` header.
 - **Sandbox / test environment** — not mentioned.
@@ -635,11 +635,32 @@ Facts recorded from the real probe run against `https://api.wallex.ir`:
 - **Precisions** — `price_precision = 0` for all four configured symbols; `amount_precision`: BTC 8, ETH 5, SOL 5, XRP 1.
 - **Market flags** — `is_market_type_enable`: BTC True, ETH True, SOL False, XRP False (meaning undocumented; possibly “MARKET orders not accepted”). `is_otc = true` on all four (not meaningful for spot).
 - **Fees** — `GET /v1/account/fee` returns a dict keyed by market symbol; first market seen: maker 0.0025, taker 0.003. The client now parses ALL markets (`get_fee`) and exposes `get_fee_for(symbol)`.
-- **Candles** — resolution `"5"` → `"Invalid resolution!"`; `"1"` and `"15"` returned IDENTICAL data (~360 one-minute candles); `"60"` and `"240"` returned IDENTICAL data (6 hourly candles); `"D"` returned 0 candles. Cause unknown (server aliasing vs client bug) — **to be confirmed by the updated probe**.
+- **Candles** — resolution `"5"` → `"Invalid resolution!"`; `"1"` and `"15"` returned IDENTICAL data (~360 one-minute candles); `"60"` and `"240"` returned IDENTICAL data (6 hourly candles); `"D"` returned 0 candles. Cause unknown (server aliasing vs client bug) — **resolved by the STEP 4d probe, see below**.
 - **Rate-limit headers** — `x-ratelimit-limit = 600`, `x-ratelimit-remaining = 599` (window unknown).
 - **Latency** — min ≈380 ms / avg ≈700 ms / max ≈2.8 s.
 - **Top of book** — thin: best-ask notional ≈0.2M TMN (SOL), ≈0.3–7M (XRP), ≈3.8M (ETH). Planned order size ≈1M TMN.
 - **Balances shape** — `{"TMN": {"free": float, "locked": float}, "BTC": {...}, ...}`; floats; key = asset code without quote suffix.
+
+---
+
+## Real probe findings, round 2 (STEP 4d — order probe + candle re-probe)
+
+**Order placement (real 422 responses):**
+- Sending price `17671321516.8` for `BTCTMN` → HTTP 422, `error_code` 1001, `"فیلد قیمت تعداد رقم اعشار بیشتر از 0 دارد."` ("the price field has more than 0 decimal places"). `price_precision = 0` is enforced **server-side**; the client now ALWAYS floors price/quantity to the market precisions via `get_market_info` before sending.
+- Sizing bug found in the probe itself: a hardcoded `max(0.001, 50000/price)` floor sized 0.001 BTC ≈ 17M TMN against a 100,000 TMN cap. The next attempt hit 422 `error_code` 1006 `"موجودی شما کافی نیست..."` ("insufficient balance"). The probe now sizes ~100,000 TMN purely from market precisions and aborts outside [50,000, 100,000] TMN before sending.
+
+**Candle resolutions (re-probed; this replaces the STEP 4b candle bullet):**
+
+| Resolution | Real behavior |
+|---|---|
+| `"15"` | **1-minute candles**; works for windows up to 72h+ (4307 candles seen). This is the RELIABLE way to fetch 1-minute data. |
+| `"1"` | 1-minute candles ONLY for windows ≤ ~6h; **EMPTY** for longer windows. |
+| `"60"` | Real hourly candles. |
+| `"240"`, `"720"` | **Aliases of `"60"`** — identical payloads; there is NO real 4h/12h data. 4h candles must be resampled client-side from hourly (`data/candles.resample_ohlcv`). |
+| `"1D"`, `"D"` | Valid daily candles. |
+| `"3"`, `"5"`, `"30"`, `"120"`, `"180"`, `"360"`, `"W"` | **INVALID** (`"Invalid resolution!"`). |
+
+Consequences in code: `WallexClient.get_candles_1m()` uses resolution `"15"`, `get_candles_1h()` uses `"60"`; `get_candles()` stays generic.
 
 ---
 

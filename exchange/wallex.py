@@ -43,12 +43,23 @@ def _generate_client_id(symbol: str, counter: int) -> str:
 # numeric helpers
 # ---------------------------------------------------------------------------
 def _format_number(value: float, precision: Optional[int]) -> str:
+    """Format with exactly `precision` decimals (Decimal, ROUND_DOWN).
+
+    precision=None falls back to a tolerant trim (unknown market); precision 0
+    produces an integer string with NO decimal point (real probe: a
+    price_precision=0 market rejects any decimal with HTTP 422
+    "price must have 0 decimals").
+    """
     if precision is None:
         return ("{:f}".format(value)).rstrip('0').rstrip('.')
     d = Decimal(str(value))
     quant = Decimal('1').scaleb(-precision)
     d = d.quantize(quant, rounding=ROUND_DOWN)
     return f"{d:.{precision}f}"
+
+def format_number(value: float, precision: Optional[int]) -> str:
+    """Public alias of the precision formatter used by create_order."""
+    return _format_number(value, precision)
 
 
 def _parse_number(val: Union[str, int, float, None]) -> Optional[float]:
@@ -64,7 +75,7 @@ def _parse_number(val: Union[str, int, float, None]) -> Optional[float]:
 # base/quote asset helpers
 # ---------------------------------------------------------------------------
 def base_asset(symbol: str, quote_suffixes: Tuple[str, ...] = ("TMN", "USDT")) -> str:
-    """Return the base asset of a symbol like 'BTCTMN' -> 'BTC'.
+    """Return the base asset of a market symbol, e.g. 'ABCTMN' -> 'ABC'.
     Strips the FIRST matching quote suffix from the END (longest first)."""
     for q in sorted(quote_suffixes, key=len, reverse=True):
         if symbol.endswith(q) and len(symbol) > len(q):
@@ -209,6 +220,17 @@ class WallexClient:
 
     # -- precision helpers ------------------------------------------------
     def _get_precision(self, symbol: str) -> Tuple[Optional[int], Optional[int]]:
+        """Price/amount precision for a symbol, ALWAYS via get_market_info
+        (cached markets, TTL 300s). Falls back to an injected markets_map,
+        then to (None, None) = tolerant formatting. Never raises.
+        """
+        try:
+            mi = self.get_market_info(symbol)
+        except Exception:
+            mi = None
+        if mi is not None and (mi.price_precision is not None
+                                or mi.amount_precision is not None):
+            return mi.price_precision, mi.amount_precision
         m = self._markets_map.get(symbol)
         if m:
             return m.get("price_precision"), m.get("amount_precision")
@@ -274,9 +296,17 @@ class WallexClient:
             raise WallexError(f"Unexpected depth response: {e}", endpoint="/v1/depth")
 
     # -- read-only: candles ------------------------------------------------
+    # REAL candle behavior (live probe, STEP 4d -- see docs/wallex_api.md):
+    #   "15"  -> 1-minute candles; works for windows up to 72h+ (4307 candles seen)
+    #   "1"   -> 1-minute candles ONLY for windows <= ~6h; EMPTY for longer windows
+    #   "60"  -> hourly candles; "240" and "720" are ALIASES of "60" (no real 4h data)
+    #   "1D"/"D" -> daily candles (valid)
+    #   "3","5","30","120","180","360","W" -> INVALID ("Invalid resolution!")
     def get_candles(self, symbol: str, resolution: str, from_ts: int, to_ts: int) -> List[Dict]:
-        """GET /v1/udf/history. resolution is a string like '1','5','15','60','D'.
-        from_ts/to_ts are epoch seconds."""
+        """GET /v1/udf/history. resolution is a string like '15','60','D'.
+        from_ts/to_ts are epoch seconds. Generic accessor; prefer the
+        get_candles_1m/get_candles_1h helpers, which encode the probed reality
+        documented above."""
         params = {"symbol": symbol, "resolution": str(resolution), "from": int(from_ts), "to": int(to_ts)}
         data = self._request("GET", "/v1/udf/history", params=params)
         status = data.get("s")
@@ -294,6 +324,18 @@ class WallexClient:
         else:
             raise WallexError(f"Candle API error: {data.get('errmsg') or status}",
                               endpoint="/v1/udf/history")
+
+    def get_candles_1m(self, symbol: str, from_ts: int, to_ts: int) -> List[Dict]:
+        """1-minute candles. Uses resolution "15": the live probe showed "15"
+        returns 1-minute data for windows up to 72h+, while "1" returns empty
+        for windows longer than ~6h (see docs/wallex_api.md)."""
+        return self.get_candles(symbol, "15", from_ts, to_ts)
+
+    def get_candles_1h(self, symbol: str, from_ts: int, to_ts: int) -> List[Dict]:
+        """Hourly candles via resolution "60" (real hourly data). NOTE: "240"
+        and "720" are aliases of "60" (identical payloads, no real 4h/12h
+        data), so 4h candles must be resampled client-side from these."""
+        return self.get_candles(symbol, "60", from_ts, to_ts)
 
     # -- read-only: balances ----------------------------------------------
     def get_balances(self) -> Dict[str, Dict[str, float]]:
@@ -347,7 +389,14 @@ class WallexClient:
                      quantity: Optional[float] = None, price: Optional[float] = None,
                      stop_price: Optional[float] = None,
                      client_id: Optional[str] = None) -> Dict:
-        """POST /v1/account/orders (201 on success)."""
+        """POST /v1/account/orders (201 on success).
+
+        Price and quantity are ALWAYS formatted with the market's
+        price_precision/amount_precision via get_market_info (Decimal,
+        ROUND_DOWN) -- caller formatting is never trusted and raw floats are
+        never sent. Real probe: a price_precision=0 market rejects any
+        decimal price ("price must have 0 decimals", HTTP 422).
+        """
         self._check_live()
         if client_id is None:
             client_id = self._next_client_id(symbol)

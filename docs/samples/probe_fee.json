@@ -1,0 +1,1498 @@
+{
+  "XLMTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CGPTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ONDOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SUSHIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "KAITOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FETTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "GRAMUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MMTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "EIGENUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SANDTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "LRCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MOGUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ZORAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MAJORUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BANKUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ZRXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BANDTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "JSTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ZENTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BNBUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XTZUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ASTERTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ETCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XMRUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DEXEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MNTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "RENDERTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SLVONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FLOWTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TSLAXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "IOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "KAIAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AEROUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ALICEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SOONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "UNGONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "1BBABYDOGETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BATUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DOGEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MOGTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TRXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "COINXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MORPHOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PEPETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ZORATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MAGICTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SNXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CHZTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ELONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "IMXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "KMNOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "EDUTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "HMSTRUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "OSMOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TURBOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "XLMUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "WLDTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "POLUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DASHUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "UMAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SAHARAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "APEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "RUNEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ATHUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XAUTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "XRPTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "APETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ATOMTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "RUNETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "USOONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "DOGETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ELONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "NEARTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SAHARATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SKLUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MASKTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "DOGSUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "WIFTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ETHTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MORPHOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "VIRTUALUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "GRTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "LTCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "RENDERUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BTTCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CATIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SKLTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "PPLTONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SNXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FLOWUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MANAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TRBUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TIATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "WUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "HMSTRTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ONDOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AEVOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "2ZUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PENGUTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "POLSTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BTCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ALICETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "USDCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DYDXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FORMUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "NEIROTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AMZNXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "KITETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MOVEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ENAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AMZNXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ENJUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "LINEATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ATOMUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XPLTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "1BBABYDOGEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MNTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ZRXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "NMRUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "METAXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "EGLDTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MEMETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "HBARUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TNSRTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ZECUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "HYPEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SYRUPUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "POLTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ARBTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "EDUUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "GALAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ALGOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "LAYERUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "JSTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "METUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PROVETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "LRCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BNBTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FLRUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PYTHUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "VIRTUALTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TOSHITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BOMETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ENJTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AVAXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BATTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "GIGGLEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "GRAMTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "QNTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "1INCHUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "COPXONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AAPLXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "IOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TAOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "NEXOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SLVONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "FILUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "STRKUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "UMATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CRVTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SEITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FLOKITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MEMEFIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PUMPUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CAKETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SOLUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CELRTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "DOGSTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ICPTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "JASMYTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "NVDAXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "DEXETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "GMTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MDTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "LINEAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "COOKIEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "NMRTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BICOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BANDUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "FLRTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "METTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "PENGUUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ORCAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XRPUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DASHTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CRVUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TSLAXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DOTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AEVOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "PUMPTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SUSHITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ONEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PROVEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "APTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "HOTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "PEOPLETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SEIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BIOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "NOTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "STRKTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "XUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ZECTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "METAXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MEMEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "API3USDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "RAYTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "RAYUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "KMNOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BONKUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CVCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "LAYERTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TRBTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "PYTHTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "HOTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MMTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AIXBTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ENATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "QNTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ADAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "WTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "EIGENTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TRXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ORCATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SUITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BCHTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ETHFIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "YFIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TAOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ETHUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SOONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AEROTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CATITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "LTCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "UNGONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "WBTCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PAXGUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SANDUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AAPLXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "YFITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "HYPETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MAJORTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "LINKUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CELRUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AGLDUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "FLOKIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SUPERTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "XMRTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "GIGGLETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "XAUTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "JASMYUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "LPTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "UNITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "NOTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MEMEFITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ZILTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SAFEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "2ZTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "EGLDUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "JUPTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "IMXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CATTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ETHFITMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MOVETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "NVDAXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CVXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "HBARTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MDTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ARBUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BONKTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CGPTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "GRTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ETCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "USDTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ADATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "MASKUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SKYUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PAXGTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SYRUPTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "COOKIETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AIOZTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SLPTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SUIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "GMTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AVNTUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BANKTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CATUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AXSTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ZENUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "NEARUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "KITEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "COPXONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "LPTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SOLTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BCHUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BOMEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "POLSUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SHIBTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SLPUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XTZTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "KAITOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DOTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "NEXOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "WBTCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BTTCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "APTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CVXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AAVEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BICOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "HOODXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ICPUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "KASTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "COINXTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "WIFUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TURBOUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AVAXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CAKEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "1INCHTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "USOONUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SKYTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "HOODXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "JUPUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "PEPEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MAGICUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "OSMOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "PPLTONTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "SHIBUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SAFETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TIAUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "BIOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "PEOPLEUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "KAIATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "UNIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "API3TMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "USDCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ATHTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "TNSRUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "USDSTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "BTCUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "GALATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ONETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FETUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "SUPERUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "MANATMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FORMTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "LINKTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "STMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "WLDUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ASTERUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "ALGOTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AVNTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "ZILUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AXSUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "DYDXUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AIXBTTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "CVCTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "FILTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "USDSUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "TOSHIUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "CHZUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AAVETMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "AGLDTMN": {
+    "maker_rate": 0.0025,
+    "taker_rate": 0.003
+  },
+  "KASUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "XPLUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "NEIROUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "AIOZUSDT": {
+    "maker_rate": 0.001,
+    "taker_rate": 0.0013
+  },
+  "metaData": {
+    "maker_rate": 0.0,
+    "taker_rate": 0.0
+  }
+}

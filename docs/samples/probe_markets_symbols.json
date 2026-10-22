@@ -7,7 +7,7 @@
     "is_otc": true,
     "is_market_type_enable": true,
     "is_zero_fee": false,
-    "quote_volume_24h": 114584356710.41783,
+    "quote_volume_24h": 110341378733.04031,
     "otc_min_notional": 90000,
     "otc_max_notional": 400000000
   },
@@ -19,7 +19,7 @@
     "is_otc": true,
     "is_market_type_enable": true,
     "is_zero_fee": false,
-    "quote_volume_24h": 81459383308.25429,
+    "quote_volume_24h": 78493576955.07588,
     "otc_min_notional": 90000,
     "otc_max_notional": 200000000
   },
@@ -31,7 +31,7 @@
     "is_otc": true,
     "is_market_type_enable": false,
     "is_zero_fee": false,
-    "quote_volume_24h": 31372692875.7,
+    "quote_volume_24h": 29932977152.3,
     "otc_min_notional": 90000,
     "otc_max_notional": 50000000
   },
@@ -43,7 +43,7 @@
     "is_otc": true,
     "is_market_type_enable": false,
     "is_zero_fee": false,
-    "quote_volume_24h": 26657257764.09184,
+    "quote_volume_24h": 23550303513.1513,
     "otc_min_notional": 90000,
     "otc_max_notional": 40000000
   }

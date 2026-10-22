@@ -67,6 +67,8 @@ class TestConfigLoads:
         assert config.CONFIG.trading.SLTP_MANUAL is False
         assert config.CONFIG.trading.manual_stop_pct == 0.015
         assert config.CONFIG.trading.manual_target_pct == 0.03
+        assert config.CONFIG.trading.LLM_JSON_MODE is False
+        assert config.CONFIG.trading.probe_default_symbol == "XRPTMN"
         assert config.CONFIG.risk.per_trade_fraction == 0.20
         assert config.CONFIG.risk.max_positions == 2
         assert config.CONFIG.risk.max_daily_loss_fraction == 0.03
@@ -75,10 +77,10 @@ class TestConfigLoads:
         assert config.CONFIG.risk.target_pct_min == 0.02
         assert config.CONFIG.risk.target_pct_max == 0.06
         assert config.CONFIG.risk.min_reward_risk == 2.0
-        assert config.CONFIG.risk.min_edge_over_cost == 3.0
+        assert config.CONFIG.risk.min_net_edge_pct == 0.002
         assert config.CONFIG.risk.min_seconds_between_trades == 900
         assert config.CONFIG.risk.min_confidence == 0.6
-        assert config.CONFIG.risk.min_order_tmn is None
+        assert config.CONFIG.risk.min_order_tmn == 100_000
         assert config.CONFIG.risk.initial_capital_tmn == 5_000_000
         assert config.CONFIG.storage.DB_PATH == "runtime/agent.db"
 
@@ -169,6 +171,21 @@ class TestValidateValueErrors:
         # valid upper bound passes
         config.validate_config(make_config(trading={"entry_max_slippage_pct": 0.02}))
 
+    def test_min_net_edge_pct_bounds(self):
+        with pytest.raises(ValueError, match="min_net_edge_pct"):
+            config.validate_config(make_config(risk={"min_net_edge_pct": -0.001}))
+        with pytest.raises(ValueError, match="min_net_edge_pct"):
+            config.validate_config(make_config(risk={"min_net_edge_pct": 0.06}))
+        # boundary values pass: 0 and 0.05
+        config.validate_config(make_config(risk={"min_net_edge_pct": 0.0}))
+        config.validate_config(make_config(risk={"min_net_edge_pct": 0.05}))
+
+    def test_min_order_tmn_must_be_positive(self):
+        with pytest.raises(ValueError, match="min_order_tmn"):
+            config.validate_config(make_config(risk={"min_order_tmn": 0}))
+        with pytest.raises(ValueError, match="min_order_tmn"):
+            config.validate_config(make_config(risk={"min_order_tmn": -1.0}))
+
     def test_clean_config_passes_silently(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -192,6 +209,11 @@ class TestValidateWarnings:
     def test_placeholder_models_warn(self):
         with pytest.warns(UserWarning, match="MODELS"):
             config.validate_config(make_config(llm={"MODELS": ["<MODEL_1>", "<MODEL_2>"]}))
+
+    def test_probe_default_symbol_not_configured_warns(self):
+        with pytest.warns(UserWarning, match="probe_default_symbol"):
+            config.validate_config(
+                make_config(trading={"SYMBOLS": ["DOGTMN", "CATTMN"]}))
 
     def test_default_config_produces_no_warnings(self):
         # Defaults now have real symbols and models: no placeholder warning at all.
@@ -232,6 +254,14 @@ class TestSecretsNeverLeak:
         snap = config.config_snapshot()
         assert snap["exchange"]["api_key"] in {"set", "missing"}
         assert snap["llm"]["api_key"] in {"set", "missing"}
+
+    def test_snapshot_contains_step4d_fields(self):
+        snap = config.config_snapshot()
+        # new STEP 4d fields are snapshotted (no secrets among them)
+        assert snap["trading"]["LLM_JSON_MODE"] is False
+        assert snap["risk"]["min_net_edge_pct"] == 0.002
+        assert snap["risk"]["min_order_tmn"] == 100_000
+        assert "min_edge_over_cost" not in snap["risk"]  # removed (deprecated)
 
 
 class TestModeBanner:

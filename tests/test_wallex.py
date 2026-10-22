@@ -256,3 +256,34 @@ class TestWallexClient:
         assert base_asset("BTCUSDT") == "BTC"
         assert base_asset("USDTTMN") == "USDT"
         assert base_asset("XYZ") == "XYZ"
+
+    def test_get_candles_1m_uses_resolution_15(self, temp_db):
+        """STEP 4d: 1-minute candles come from resolution "15" (real probe:
+        "1" returns empty for windows > ~6h, "15" works up to 72h+)."""
+        ok_payload = {"s": "ok", "t": [1, 2], "o": ["1", "2"], "h": ["2", "3"],
+                      "l": ["0.5", "1"], "c": ["1.5", "2.5"], "v": ["10", "20"]}
+        with patch("requests.Session.request", return_value=make_mock_response(json_data=ok_payload)) as mock_req:
+            client = WallexClient(config.CONFIG, db=temp_db)
+            candles = client.get_candles_1m("BTCTMN", 100, 200)
+            assert len(candles) == 2
+            params = mock_req.call_args[1]["params"]
+            assert params["resolution"] == "15"
+            assert params["symbol"] == "BTCTMN"
+            assert params["from"] == 100 and params["to"] == 200
+
+    def test_get_candles_1h_uses_resolution_60(self, temp_db):
+        ok_payload = {"s": "ok", "t": [1], "o": ["1"], "h": ["2"],
+                      "l": ["0.5"], "c": ["1.5"], "v": ["10"]}
+        with patch("requests.Session.request", return_value=make_mock_response(json_data=ok_payload)) as mock_req:
+            client = WallexClient(config.CONFIG, db=temp_db)
+            candles = client.get_candles_1h("ETHTMN", 100, 200)
+            assert len(candles) == 1
+            params = mock_req.call_args[1]["params"]
+            assert params["resolution"] == "60"
+
+    def test_get_candles_1m_empty_on_no_data(self, temp_db):
+        nodata_payload = {"s": "no_data", "t": [], "o": [], "h": [], "l": [], "c": [], "v": []}
+        with patch("requests.Session.request", return_value=make_mock_response(json_data=nodata_payload)):
+            client = WallexClient(config.CONFIG, db=temp_db)
+            assert client.get_candles_1m("BTCTMN", 100, 200) == []
+            assert client.get_candles_1h("BTCTMN", 100, 200) == []

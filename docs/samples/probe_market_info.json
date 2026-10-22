@@ -1,0 +1,46 @@
+{
+  "BTCTMN": {
+    "symbol": "BTCTMN",
+    "base_asset": "BTC",
+    "quote_asset": "TMN",
+    "price_precision": 0,
+    "amount_precision": 8,
+    "is_market_type_enable": true,
+    "is_zero_fee": false,
+    "flags": [],
+    "quote_volume_24h": 110341378733.04031
+  },
+  "ETHTMN": {
+    "symbol": "ETHTMN",
+    "base_asset": "ETH",
+    "quote_asset": "TMN",
+    "price_precision": 0,
+    "amount_precision": 5,
+    "is_market_type_enable": true,
+    "is_zero_fee": false,
+    "flags": [],
+    "quote_volume_24h": 78493576955.07588
+  },
+  "SOLTMN": {
+    "symbol": "SOLTMN",
+    "base_asset": "SOL",
+    "quote_asset": "TMN",
+    "price_precision": 0,
+    "amount_precision": 5,
+    "is_market_type_enable": false,
+    "is_zero_fee": false,
+    "flags": [],
+    "quote_volume_24h": 23550303513.1513
+  },
+  "XRPTMN": {
+    "symbol": "XRPTMN",
+    "base_asset": "XRP",
+    "quote_asset": "TMN",
+    "price_precision": 0,
+    "amount_precision": 1,
+    "is_market_type_enable": false,
+    "is_zero_fee": false,
+    "flags": [],
+    "quote_volume_24h": 29932977152.3
+  }
+}

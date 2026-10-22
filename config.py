@@ -106,6 +106,9 @@ class TradingConfig:
     USE_SERVER_STOP: bool = False
     # If True, models are also called while a position is open and may vote SELL to exit.
     MODELS_VOTE_ON_EXIT: bool = True
+    # If True, LLM requests ask for response_format {"type": "json_object"} (OpenAI-compatible).
+    # Off by default: not every backend honors it and the parser is strict anyway.
+    LLM_JSON_MODE: bool = False
     # Ticks above the best ask for the entry LIMIT BUY price (0 = join the best ask).
     entry_limit_ticks_above: int = 0
     # Seconds to wait for the entry LIMIT BUY to fill before cancelling (then HOLD).
@@ -122,6 +125,10 @@ class TradingConfig:
     trigger_window_sec: int = 300
     # Minimum seconds between two triggers for the same symbol.
     trigger_cooldown_sec: int = 180
+    # Preferred symbol for the live order probe (scripts/probe_orders.py);
+    # used only if it is also in SYMBOLS, otherwise the probe falls back to
+    # the lowest-priced CONFIG.SYMBOLS entry.
+    probe_default_symbol: str = "XRPTMN"
     # Starting balance of the paper account, in toman (paper mode only).
     paper_initial_capital_tmn: float = 5_000_000
     # conservative placeholder taker fee used in paper mode only if GET /v1/account/fee fails; replace after the real fee is known
@@ -154,14 +161,17 @@ class RiskConfig:
     target_pct_max: float = 0.06
     # Minimum acceptable reward/risk ratio (target_pct / stop_pct) for an entry.
     min_reward_risk: float = 2.0
-    # Minimum expected edge over the round-trip cost, in multiples of that cost.
-    min_edge_over_cost: float = 3.0
+    # Minimum expected net edge of an entry: p*target - (1-p)*stop - round_trip_cost,
+    # where p is the mean confidence of the agreeing models. Replaces the deprecated
+    # min_edge_over_cost (edge measured in multiples of cost) from STEP 4d on.
+    min_net_edge_pct: float = 0.002
     # Minimum seconds between two entries (exit orders are never blocked by this).
     min_seconds_between_trades: int = 900
     # Minimum model confidence (0..1) required for an entry.
     min_confidence: float = 0.6
-    # Minimum order size in toman; None until a probe discovers the exchange minimum.
-    min_order_tmn: float | None = None
+    # Hard floor for the order size in toman (our own risk floor; the exchange's
+    # real spot minimum is still unknown -- probes found none in the markets response).
+    min_order_tmn: float = 100_000
     # Capital at the start of a live run, in toman.
     initial_capital_tmn: float = 5_000_000
 
@@ -234,6 +244,18 @@ def validate_config(cfg: Config) -> None:
         raise ValueError(
             f"entry_max_slippage_pct ({t.entry_max_slippage_pct}) must be in (0, 0.02]"
         )
+    if t.probe_default_symbol and t.probe_default_symbol not in t.SYMBOLS:
+        warnings.warn(
+            f"probe_default_symbol ({t.probe_default_symbol}) is not in SYMBOLS; "
+            "the order probe will fall back to the lowest-priced configured symbol",
+            stacklevel=2,
+        )
+    if not (0 <= r.min_net_edge_pct <= 0.05):
+        raise ValueError(
+            f"min_net_edge_pct ({r.min_net_edge_pct}) must be in [0, 0.05]"
+        )
+    if r.min_order_tmn <= 0:
+        raise ValueError(f"min_order_tmn ({r.min_order_tmn}) must be > 0")
 
     # --- soft warnings (never raise) ----------------------------------------
     if r.target_pct_min < r.min_reward_risk * r.stop_pct_min:

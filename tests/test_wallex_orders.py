@@ -211,3 +211,108 @@ class TestWallexOrders:
                                        quantity=1.0, price=100.0)
             assert res2["order"]["executedPercent"] == 75.0
             assert res2["order"]["fee"] == 0.001
+
+
+def _routed_mock(markets_payload, order_payload):
+    """A requests.Session.request side effect that routes by URL:
+    /markets -> markets_payload, anything else -> order_payload."""
+    def fake_request(method, url, **kwargs):
+        if "/markets" in url:
+            return make_mock_response(json_data=markets_payload)
+        return make_mock_response(json_data=order_payload)
+    return fake_request
+
+
+def _markets_payload(symbol, price_precision, amount_precision):
+    return {
+        "result": {"markets": [
+            {"symbol": symbol, "base_asset": "X", "quote_asset": "TMN",
+             "price_precision": price_precision, "amount_precision": amount_precision},
+        ]},
+        "message": "ok", "success": True,
+    }
+
+
+_ORDER_PAYLOAD = {"result": {"clientOrderId": "abc123", "status": "NEW"}, "success": True}
+
+
+class TestCreateOrderPrecisionViaMarketInfo:
+    """STEP 4d PART 0.1: create_order ALWAYS formats price/quantity with the
+    market's precisions fetched via get_market_info (Decimal, ROUND_DOWN)."""
+
+    def test_real_422_case_price_precision_0(self, temp_db):
+        # best-known real failure: BTCTMN price 17671321516.8 -> 422 "price must have 0 decimals"
+        markets = _markets_payload("BTCTMN", 0, 8)
+        with patch("requests.Session.request",
+                   side_effect=_routed_mock(markets, _ORDER_PAYLOAD)) as mock_req:
+            client = WallexClient(_cfg_dry(False), db=temp_db)
+            client.create_order(symbol="BTCTMN", side="BUY", type="LIMIT",
+                                quantity=0.00000707, price=17671321516.8)
+            called_json = mock_req.call_args[1]["json"]
+            assert called_json["price"] == "17671321516"
+            assert "." not in called_json["price"]
+            assert called_json["quantity"] == "0.00000707"
+
+    def test_quantity_precision_8(self, temp_db):
+        markets = _markets_payload("BTCTMN", 0, 8)
+        with patch("requests.Session.request",
+                   side_effect=_routed_mock(markets, _ORDER_PAYLOAD)) as mock_req:
+            client = WallexClient(_cfg_dry(False), db=temp_db)
+            client.create_order(symbol="BTCTMN", side="BUY", type="LIMIT",
+                                quantity=0.123456789, price=100.0)
+            called_json = mock_req.call_args[1]["json"]
+            assert called_json["quantity"] == "0.12345678"
+
+    def test_quantity_precision_5(self, temp_db):
+        markets = _markets_payload("ETHTMN", 0, 5)
+        with patch("requests.Session.request",
+                   side_effect=_routed_mock(markets, _ORDER_PAYLOAD)) as mock_req:
+            client = WallexClient(_cfg_dry(False), db=temp_db)
+            client.create_order(symbol="ETHTMN", side="BUY", type="LIMIT",
+                                quantity=0.123456789, price=100.0)
+            called_json = mock_req.call_args[1]["json"]
+            assert called_json["quantity"] == "0.12345"
+
+    def test_quantity_precision_1(self, temp_db):
+        markets = _markets_payload("XRPTMN", 0, 1)
+        with patch("requests.Session.request",
+                   side_effect=_routed_mock(markets, _ORDER_PAYLOAD)) as mock_req:
+            client = WallexClient(_cfg_dry(False), db=temp_db)
+            client.create_order(symbol="XRPTMN", side="BUY", type="LIMIT",
+                                quantity=12.345, price=30000.7)
+            called_json = mock_req.call_args[1]["json"]
+            assert called_json["quantity"] == "12.3"
+            assert called_json["price"] == "30000"
+
+    def test_market_order_quantity_also_formatted(self, temp_db):
+        markets = _markets_payload("XRPTMN", 0, 1)
+        with patch("requests.Session.request",
+                   side_effect=_routed_mock(markets, _ORDER_PAYLOAD)) as mock_req:
+            client = WallexClient(_cfg_dry(False), db=temp_db)
+            client.create_order(symbol="XRPTMN", side="SELL", type="MARKET",
+                                quantity=12.345)
+            called_json = mock_req.call_args[1]["json"]
+            assert called_json["quantity"] == "12.3"
+            assert "price" not in called_json
+
+    def test_stop_price_formatted_with_precision(self, temp_db):
+        markets = _markets_payload("BTCTMN", 0, 8)
+        with patch("requests.Session.request",
+                   side_effect=_routed_mock(markets, _ORDER_PAYLOAD)) as mock_req:
+            client = WallexClient(_cfg_dry(False), db=temp_db)
+            client.create_order(symbol="BTCTMN", side="SELL", type="STOP_LIMIT",
+                                quantity=1.0, price=100.5, stop_price=99.7)
+            called_json = mock_req.call_args[1]["json"]
+            assert called_json["stop_Price"] == "99"
+
+    def test_markets_fetch_failure_falls_back_tolerant(self, temp_db):
+        # markets endpoint broken -> no crash, tolerant formatting (no precision)
+        broken = {"result": {"unexpected": True}, "success": True}
+        with patch("requests.Session.request",
+                   side_effect=_routed_mock(broken, _ORDER_PAYLOAD)) as mock_req:
+            client = WallexClient(_cfg_dry(False), db=temp_db)
+            client.create_order(symbol="BTCTMN", side="BUY", type="LIMIT",
+                                quantity=1.5, price=100.0)
+            called_json = mock_req.call_args[1]["json"]
+            assert isinstance(called_json["price"], str)
+            assert "e" not in called_json["price"].lower()

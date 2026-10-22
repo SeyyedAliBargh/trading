@@ -641,6 +641,35 @@ def get_last_trade_ts(symbol: str, dry_run: bool) -> str | None:
     return row["last_ts"]
 
 
+def get_last_closed_at(dry_run: bool) -> str | None:
+    """Latest closed_at among CLOSED positions of this mode (any symbol); None if none."""
+    conn = _require_conn()
+    with _lock:
+        row = conn.execute(
+            "SELECT MAX(closed_at) AS last_ts FROM positions "
+            "WHERE status = 'CLOSED' AND dry_run = ?",
+            (int(bool(dry_run)),),
+        ).fetchone()
+    return row["last_ts"]
+
+
+def get_recent_decisions(symbol: str, limit: int, mode: str) -> list[dict]:
+    """Most-recent-first decision rows for one symbol of one mode ('paper'/'live').
+
+    Mode is resolved through the runs table (decisions carry only run_id), so
+    paper and live history never mix.
+    """
+    conn = _require_conn()
+    with _lock:
+        rows = conn.execute(
+            "SELECT d.* FROM decisions d JOIN runs r ON d.run_id = r.id "
+            "WHERE d.symbol = ? AND r.mode = ? "
+            "ORDER BY d.id DESC LIMIT ?",
+            (symbol, mode, int(limit)),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 # ---------------------------------------------------------------------------
 # Paper account (singleton row id = 1)
 # ---------------------------------------------------------------------------
