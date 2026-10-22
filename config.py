@@ -110,6 +110,10 @@ class TradingConfig:
     entry_limit_ticks_above: int = 0
     # Seconds to wait for the entry LIMIT BUY to fill before cancelling (then HOLD).
     entry_fill_timeout_sec: int = 10
+    # Maximum acceptable entry slippage above the best ask (0.003 = 0.3%); validated 0 < x <= 0.02.
+    entry_max_slippage_pct: float = 0.003
+    # If True, paper BUY fees are charged in the BASE asset; if False, in TMN. Real fee asset on Wallex is unverified.
+    paper_buy_fee_in_base: bool = True
     # The guardian thread may start an off-schedule decision cycle for a symbol that has NO open position.
     event_trigger_enabled: bool = True
     # Price move within the window that fires the trigger (relative, 0.015 = 1.5%).
@@ -226,6 +230,10 @@ def validate_config(cfg: Config) -> None:
         raise ValueError(f"trigger_window_sec ({t.trigger_window_sec}) must be > 0")
     if t.trigger_cooldown_sec < 0:
         raise ValueError(f"trigger_cooldown_sec ({t.trigger_cooldown_sec}) must be >= 0")
+    if not (0 < t.entry_max_slippage_pct <= 0.02):
+        raise ValueError(
+            f"entry_max_slippage_pct ({t.entry_max_slippage_pct}) must be in (0, 0.02]"
+        )
 
     # --- soft warnings (never raise) ----------------------------------------
     if r.target_pct_min < r.min_reward_risk * r.stop_pct_min:

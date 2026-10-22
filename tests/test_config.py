@@ -56,6 +56,8 @@ class TestConfigLoads:
         assert config.CONFIG.trading.MODELS_VOTE_ON_EXIT is True
         assert config.CONFIG.trading.entry_limit_ticks_above == 0
         assert config.CONFIG.trading.entry_fill_timeout_sec == 10
+        assert config.CONFIG.trading.entry_max_slippage_pct == 0.003
+        assert config.CONFIG.trading.paper_buy_fee_in_base is True
         assert config.CONFIG.trading.event_trigger_enabled is True
         assert config.CONFIG.trading.trigger_move_pct == 0.015
         assert config.CONFIG.trading.trigger_window_sec == 300
@@ -158,6 +160,14 @@ class TestValidateValueErrors:
     def test_trigger_cooldown_sec_must_be_non_negative(self):
         with pytest.raises(ValueError, match="trigger_cooldown_sec"):
             config.validate_config(make_config(trading={"trigger_cooldown_sec": -1}))
+
+    def test_entry_max_slippage_pct_bounds(self):
+        with pytest.raises(ValueError, match="entry_max_slippage_pct"):
+            config.validate_config(make_config(trading={"entry_max_slippage_pct": 0.0}))
+        with pytest.raises(ValueError, match="entry_max_slippage_pct"):
+            config.validate_config(make_config(trading={"entry_max_slippage_pct": 0.03}))
+        # valid upper bound passes
+        config.validate_config(make_config(trading={"entry_max_slippage_pct": 0.02}))
 
     def test_clean_config_passes_silently(self):
         with warnings.catch_warnings():

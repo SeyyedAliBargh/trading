@@ -207,12 +207,52 @@ class TestWallexClient:
 
         fee_payload = {
             "result": {
-                "BTCTMN": {"makerFeeRate": "0.002", "takerFeeRate": "0.003", "recent_days_sum": 1000}
+                "BTCTMN": {"makerFeeRate": "0.002", "takerFeeRate": "0.003", "recent_days_sum": 1000},
+                "ETHTMN": {"makerFeeRate": "0.0025", "takerFeeRate": "0.003", "recent_days_sum": 0},
             },
             "message": "ok", "success": True
         }
         with patch("requests.Session.request", return_value=make_mock_response(json_data=fee_payload)):
             client = WallexClient(config.CONFIG, db=temp_db)
-            fee = client.get_fee()
-            assert fee["maker_rate"] == 0.002
-            assert fee["taker_rate"] == 0.003
+            fees = client.get_fee()
+            assert set(fees.keys()) == {"BTCTMN", "ETHTMN"}
+            assert fees["BTCTMN"]["maker_rate"] == 0.002
+            assert fees["ETHTMN"]["taker_rate"] == 0.003
+            # get_fee_for uses the cache
+            assert client.get_fee_for("BTCTMN") == {"maker_rate": 0.002, "taker_rate": 0.003}
+            assert client.get_fee_for("MISSING") is None
+
+    def test_get_market_info(self, temp_db):
+        markets_payload = {
+            "result": {"markets": [
+                {"symbol": "BTCTMN", "base_asset": "BTC", "quote_asset": "TMN",
+                 "price_precision": 0, "amount_precision": 8,
+                 "is_market_type_enable": True, "is_zero_fee": False,
+                 "flags": [], "quote_volume_24h": 123.4},
+                {"symbol": "SOLTMN", "price_precision": 0, "amount_precision": 5,
+                 "is_market_type_enable": False, "is_zero_fee": False,
+                 "flags": ["isRisky"], "quote_volume_24h": 456.7},
+            ]},
+            "message": "ok", "success": True
+        }
+        with patch("requests.Session.request", return_value=make_mock_response(json_data=markets_payload)):
+            client = WallexClient(config.CONFIG, db=temp_db)
+            mi = client.get_market_info("BTCTMN")
+            assert mi is not None
+            assert mi.base_asset == "BTC"
+            assert mi.quote_asset == "TMN"
+            assert mi.price_precision == 0
+            assert mi.amount_precision == 8
+            assert mi.is_market_type_enable is True
+            # base_asset fallback strips the suffix
+            mi2 = client.get_market_info("SOLTMN")
+            assert mi2.base_asset == "SOL"
+            assert mi2.flags == ["isRisky"]
+            assert client.get_market_info("NOPE") is None
+
+    def test_base_asset_helper(self):
+        from exchange.wallex import base_asset
+        assert base_asset("BTCTMN") == "BTC"
+        assert base_asset("BTCUSDT") == "BTC"
+        assert base_asset("USDTTMN") == "USDT"
+        assert base_asset("XYZ") == "XYZ"

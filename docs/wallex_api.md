@@ -573,7 +573,7 @@ Sources: the swagger schemas (`resources.allMarkets`, identical in `wallex_swagg
 | Minimum order size (spot) | **Unknown** | The real markets response contains **no** spot minimum-quantity or minimum-notional field. `otc_min_notional` / `otc_max_notional` (integers, e.g. `90000` / `200000000`) apply to **OTC markets only** and must **NOT** be treated as the spot minimum order size. The only other min-values in the sources are `min_withdrawal_value` / `min_deposit_value` on the crypto-wallet endpoint, which concern deposits/withdrawals, **not** orders |
 | Fees | **`is_zero_fee`** (boolean) — meaning **Unknown** | The field name suggests a zero-fee market, but neither swagger file nor the samples documents what it actually zeroes (maker? taker? which market types?); its semantics are unknown. Actual fee **rates are not included** in the markets response |
 
-**Where fee rates actually come from (per `wallex_swagger.json`; `spot_swagger.json` does not describe `GET /v1/account/fee`):** the separate, API-key-protected endpoint `GET /v1/account/fee` returns, per market key (e.g. `BTCTMN`):
+**Where fee rates actually come from (per `wallex_swagger.json` + real probe; `spot_swagger.json` does not describe `GET /v1/account/fee`):** the API-key-protected endpoint `GET /v1/account/fee` returns a **dict keyed by market symbol** (e.g. `BTCTMN`), each value containing:
 
 | Field | Type | Example |
 |---|---|---|
@@ -624,6 +624,22 @@ Everything below is absent from **both** `wallex_swagger.json` and `spot_swagger
 - **Sandbox / test environment** — not mentioned.
 
 *Removed from this list in this update (now answered by `spot_swagger.json` and official docs):* create order, cancel order, order status, open orders list, order types limit/market/stop-limit (+ stop-market), server-side stop-order registration, error responses for the spot endpoints, pagination for the order lists, order object shape, dict‑of‑lists result envelope, client_id validation rule, order placement rate limit.
+
+---
+
+## Real read-only probe findings (STEP 4b — to be confirmed where noted)
+
+Facts recorded from the real probe run against `https://api.wallex.ir`:
+
+- **Symbol format** — the plain concatenated form (`BTCTMN`) works for both `/v1/depth` and `/v1/udf/history`.
+- **Precisions** — `price_precision = 0` for all four configured symbols; `amount_precision`: BTC 8, ETH 5, SOL 5, XRP 1.
+- **Market flags** — `is_market_type_enable`: BTC True, ETH True, SOL False, XRP False (meaning undocumented; possibly “MARKET orders not accepted”). `is_otc = true` on all four (not meaningful for spot).
+- **Fees** — `GET /v1/account/fee` returns a dict keyed by market symbol; first market seen: maker 0.0025, taker 0.003. The client now parses ALL markets (`get_fee`) and exposes `get_fee_for(symbol)`.
+- **Candles** — resolution `"5"` → `"Invalid resolution!"`; `"1"` and `"15"` returned IDENTICAL data (~360 one-minute candles); `"60"` and `"240"` returned IDENTICAL data (6 hourly candles); `"D"` returned 0 candles. Cause unknown (server aliasing vs client bug) — **to be confirmed by the updated probe**.
+- **Rate-limit headers** — `x-ratelimit-limit = 600`, `x-ratelimit-remaining = 599` (window unknown).
+- **Latency** — min ≈380 ms / avg ≈700 ms / max ≈2.8 s.
+- **Top of book** — thin: best-ask notional ≈0.2M TMN (SOL), ≈0.3–7M (XRP), ≈3.8M (ETH). Planned order size ≈1M TMN.
+- **Balances shape** — `{"TMN": {"free": float, "locked": float}, "BTC": {...}, ...}`; floats; key = asset code without quote suffix.
 
 ---
 

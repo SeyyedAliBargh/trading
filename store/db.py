@@ -593,6 +593,18 @@ def get_order_by_client_id(client_id: str) -> dict | None:
     return dict(row) if row is not None else None
 
 
+def get_orders_by_status(statuses: list, dry_run: bool) -> list[dict]:
+    """Return orders whose status is in `statuses` and dry_run matches."""
+    conn = _require_conn()
+    placeholders = ", ".join("?" for _ in statuses)
+    with _lock:
+        rows = conn.execute(
+            f"SELECT * FROM orders WHERE status IN ({placeholders}) AND dry_run = ? ORDER BY id",
+            (*statuses, int(bool(dry_run))),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def realized_pnl_since(since_ts: str, dry_run: bool) -> float:
     """Sum of pnl_tmn over CLOSED positions with closed_at >= since_ts."""
     conn = _require_conn()

@@ -1,13 +1,25 @@
-"""Paper trading exchange simulator (PART 2)."""
+"""Paper trading exchange simulator (STEP 4b).
+
+Simulates against the REAL order book obtained from an injected read-only
+data source (a WallexClient used only for GET calls). All order state is
+persisted in the store; critical write failures raise PaperExchangeError.
+"""
 import time
 import uuid
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 import config
 import store.db as store_db
-from exchange.wallex import WallexError
+from exchange import book
+from exchange.wallex import WallexError, base_asset
 
 
-# Paper-only order statuses (until real statuses are known)
+class PaperExchangeError(Exception):
+    """Raised when a critical store write fails or the wallet cannot cover an order."""
+
+
+# Paper-only order status strings (raw values; executors must rely on
+# `active` and `executedQty`, never on status names).
 class PaperStatus:
     NEW = "NEW"
     PARTIALLY_FILLED = "PARTIALLY_FILLED"
@@ -16,274 +28,361 @@ class PaperStatus:
     REJECTED = "REJECTED"
 
 
+_OPEN_STATUSES = (PaperStatus.NEW, PaperStatus.PARTIALLY_FILLED)
+
+
+def _now_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())
+
+
+def _assets_get(assets: Dict[str, Any], key: str) -> Dict[str, float]:
+    entry = assets.get(key)
+    if not isinstance(entry, dict):
+        return {"free": 0.0, "locked": 0.0}
+    return {"free": float(entry.get("free", 0.0)), "locked": float(entry.get("locked", 0.0))}
+
+
+def _assets_set(assets: Dict[str, Any], key: str, free: float, locked: float) -> None:
+    if abs(free) < 1e-12 and abs(locked) < 1e-12:
+        assets.pop(key, None)
+    else:
+        assets[key] = {"free": free, "locked": locked}
+
+
 class PaperExchange:
     """Simulated exchange for DRY_RUN mode. No network calls for orders."""
 
     def __init__(self, cfg: config.Config, db_path: str, data_source):
         self.cfg = cfg
         self.db_path = db_path
-        self.data_source = data_source  # WallexClient instance for market data
-        self._fee_cache = {"rate": None, "ts": 0}
-        self._fee_ttl = 60  # seconds
-
-        # Ensure paper account exists
+        self.data_source = data_source
         store_db.init_db(db_path)
         acct = store_db.get_paper_account()
         if acct is None:
-            store_db.reset_paper_account(cfg.trading.paper_initial_capital_tmn)
+            if not store_db.reset_paper_account(cfg.trading.paper_initial_capital_tmn):
+                raise PaperExchangeError("Failed to initialise paper account")
 
     # ------------------------------------------------------------------ #
-    # Fee handling
+    # Account / balances
     # ------------------------------------------------------------------ #
-    def _get_taker_fee_rate(self) -> float:
-        now = time.time()
-        if self._fee_cache["rate"] is not None and now - self._fee_cache["ts"] < self._fee_ttl:
-            return self._fee_cache["rate"]
-        try:
-            fee_info = self.data_source.get_fee()
-            rate = fee_info.get("taker_rate", 0.0)
-        except Exception:
-            rate = self.cfg.trading.paper_fallback_fee_rate
-        self._fee_cache = {"rate": rate, "ts": now}
-        return rate
-
-    # ------------------------------------------------------------------ #
-    # Helpers for balance
-    # ------------------------------------------------------------------ #
-    def _get_account(self) -> Dict:
+    def _account(self) -> Dict[str, Any]:
         acct = store_db.get_paper_account()
         if acct is None:
-            raise WallexError("Paper account missing")
-        return acct
+            raise PaperExchangeError("Paper account missing")
+        assets = acct.get("assets", {})
+        if not isinstance(assets, dict):
+            assets = {}
+        # ensure TMN entry exists and mirrors tmn_balance
+        tmn = _assets_get(assets, "TMN")
+        assets["TMN"] = {"free": float(acct["tmn_balance"]), "locked": tmn["locked"]}
+        return {"tmn_balance": float(acct["tmn_balance"]), "assets": assets}
 
-    def _update_account_balance(self, tmn_delta: float, asset_delta: Dict[str, float]) -> bool:
-        acct = self._get_account()
-        new_tmn = acct["tmn_balance"] + tmn_delta
-        if new_tmn < -1e-9:
-            return False
-        new_assets = dict(acct.get("assets", {}))
-        for a, d in asset_delta.items():
-            new_val = new_assets.get(a, 0.0) + d
-            if new_val < -1e-9:
-                return False
-            if abs(new_val) < 1e-12:
-                new_assets.pop(a, None)
-            else:
-                new_assets[a] = new_val
-        return store_db.set_paper_account(new_tmn, new_assets)
+    def _save_account(self, tmn_free: float, assets: Dict[str, Any]) -> None:
+        if not store_db.set_paper_account(tmn_free, assets):
+            raise PaperExchangeError("Failed to persist paper account")
+
+    def _apply_deltas(self, free_deltas: Dict[str, float],
+                      lock_deltas: Dict[str, float]) -> None:
+        """Apply balance deltas; raises PaperExchangeError if any goes negative."""
+        acct = self._account()
+        assets = acct["assets"]
+        # validate first
+        for key, d in {**free_deltas, **{k: 0.0 for k in lock_deltas}}.items():
+            cur = _assets_get(assets, key)
+            nf = cur["free"] + free_deltas.get(key, 0.0)
+            nl = cur["locked"] + lock_deltas.get(key, 0.0)
+            if nf < -1e-9 or nl < -1e-9:
+                raise PaperExchangeError(f"Insufficient {key} balance")
+        for key in set(list(free_deltas) + list(lock_deltas)):
+            cur = _assets_get(assets, key)
+            _assets_set(assets, key,
+                        cur["free"] + free_deltas.get(key, 0.0),
+                        cur["locked"] + lock_deltas.get(key, 0.0))
+        tmn = _assets_get(assets, "TMN")
+        self._save_account(tmn["free"], assets)
+
+    def get_balances(self) -> Dict[str, Dict[str, float]]:
+        acct = self._account()
+        out: Dict[str, Dict[str, float]] = {}
+        for key, val in acct["assets"].items():
+            out[key] = {"free": float(val.get("free", 0.0)), "locked": float(val.get("locked", 0.0))}
+        out.setdefault("TMN", {"free": 0.0, "locked": 0.0})
+        return out
 
     # ------------------------------------------------------------------ #
-    # Order book access via data_source
+    # Fees
     # ------------------------------------------------------------------ #
-    def _get_depth(self, symbol: str) -> Dict:
+    def _taker_fee_for(self, symbol: str) -> float:
+        try:
+            info = self.data_source.get_fee_for(symbol)
+            if info and info.get("taker_rate") is not None:
+                return float(info["taker_rate"])
+        except Exception:
+            pass
+        return float(self.cfg.trading.paper_fallback_fee_rate)
+
+    # ------------------------------------------------------------------ #
+    # Depth
+    # ------------------------------------------------------------------ #
+    def _depth(self, symbol: str) -> Dict[str, List]:
         return self.data_source.get_depth(symbol)
 
     # ------------------------------------------------------------------ #
-    # Order matching core
+    # Order helpers
     # ------------------------------------------------------------------ #
-    def _match_limit_buy(self, symbol: str, limit_price: float, quantity: float) -> (float, float, List):
-        """Try to fill a BUY LIMIT order. Returns (filled_qty, avg_price, fills_list)."""
-        depth = self._get_depth(symbol)
-        asks = depth.get("asks", [])
-        filled = 0.0
-        cost = 0.0
-        fills = []
-        for ask_price, ask_qty, _ in asks:
-            if ask_price > limit_price + 1e-12:
-                break
-            take = min(ask_qty, quantity - filled)
-            filled += take
-            cost += take * ask_price
-            fills.append({"price": ask_price, "quantity": take})
-            if filled >= quantity - 1e-12:
-                break
-        avg = cost / filled if filled > 0 else 0.0
-        return filled, avg, fills
+    def _next_client_id(self, symbol: str) -> str:
+        return f"paper_{symbol}_{uuid.uuid4().hex[:12]}"
 
-    def _match_market_buy(self, symbol: str, quantity: float) -> (float, float, List):
-        depth = self._get_depth(symbol)
-        asks = depth.get("asks", [])
-        filled = 0.0
-        cost = 0.0
-        fills = []
-        for ask_price, ask_qty, _ in asks:
-            take = min(ask_qty, quantity - filled)
-            filled += take
-            cost += take * ask_price
-            fills.append({"price": ask_price, "quantity": take})
-            if filled >= quantity - 1e-12:
-                break
-        avg = cost / filled if filled > 0 else 0.0
-        return filled, avg, fills
+    def _persist_order(self, *, client_id, symbol, side, type_, price, quantity,
+                       status, filled_qty, avg_price, fee_tmn, fills, orig_qty) -> int:
+        order_id = store_db.insert_order(
+            run_id=None, client_id=client_id, symbol=symbol, side=side, type=type_,
+            price=price, quantity=orig_qty, status=status,
+            filled_quantity=filled_qty, avg_fill_price=avg_price, fee_tmn=fee_tmn,
+            dry_run=True,
+            request_json={"side": side, "symbol": symbol, "type": type_,
+                          "price": price, "quantity": quantity},
+            response_json={"fills": fills, "status": status},
+        )
+        if order_id is None:
+            raise PaperExchangeError(f"Failed to persist order {client_id}")
+        return order_id
 
-    def _match_limit_sell(self, symbol: str, limit_price: float, quantity: float) -> (float, float, List):
-        depth = self._get_depth(symbol)
-        bids = depth.get("bids", [])
-        filled = 0.0
-        proceeds = 0.0
-        fills = []
-        for bid_price, bid_qty, _ in bids:
-            if bid_price < limit_price - 1e-12:
-                break
-            take = min(bid_qty, quantity - filled)
-            filled += take
-            proceeds += take * bid_price
-            fills.append({"price": bid_price, "quantity": take})
-            if filled >= quantity - 1e-12:
-                break
-        avg = proceeds / filled if filled > 0 else 0.0
-        return filled, avg, fills
+    def _update_order_row(self, order_row_id: int, **fields) -> None:
+        if not store_db.update_order(order_row_id, **fields):
+            raise PaperExchangeError(f"Failed to update order row {order_row_id}")
 
-    def _match_market_sell(self, symbol: str, quantity: float) -> (float, float, List):
-        depth = self._get_depth(symbol)
-        bids = depth.get("bids", [])
-        filled = 0.0
-        proceeds = 0.0
-        fills = []
-        for bid_price, bid_qty, _ in bids:
-            take = min(bid_qty, quantity - filled)
-            filled += take
-            proceeds += take * bid_price
-            fills.append({"price": bid_price, "quantity": take})
-            if filled >= quantity - 1e-12:
-                break
-        avg = proceeds / filled if filled > 0 else 0.0
-        return filled, avg, fills
+    @staticmethod
+    def _order_dict(row: Dict[str, Any], fills: Optional[List[Dict]] = None) -> Dict[str, Any]:
+        status = row.get("status")
+        active = status in _OPEN_STATUSES
+        return {
+            "active": active,
+            "clientOrderId": row.get("client_id"),
+            "created_at": row.get("ts"),
+            "executedPercent": None,
+            "executedPrice": row.get("avg_fill_price"),
+            "executedQty": row.get("filled_quantity"),
+            "executedSum": (row.get("avg_fill_price") or 0) * (row.get("filled_quantity") or 0),
+            "fee": row.get("fee_tmn"),
+            "fills": fills if fills is not None else [],
+            "origQty": row.get("quantity"),
+            "price": row.get("price"),
+            "side": row.get("side"),
+            "status": status,
+            "stopPrice": None,
+            "stopPriceCondition": None,
+            "sum": (row.get("price") or 0) * (row.get("quantity") or 0),
+            "symbol": row.get("symbol"),
+            "transactTime": None,
+            "type": row.get("type"),
+            "updated_at": row.get("updated_at"),
+        }
 
     # ------------------------------------------------------------------ #
-    # Public API matching WallexClient write methods
+    # create_order
     # ------------------------------------------------------------------ #
     def create_order(self, symbol: str, side: str, type: str,
                      quantity: Optional[float] = None, price: Optional[float] = None,
-                     stop_price: Optional[float] = None, client_id: Optional[str] = None) -> Dict:
+                     stop_price: Optional[float] = None,
+                     client_id: Optional[str] = None) -> Dict:
+        side_u = side.upper()
+        type_u = type.upper()
+        if side_u not in ("BUY", "SELL"):
+            raise PaperExchangeError("Invalid side")
+        if type_u not in ("LIMIT", "MARKET"):
+            raise PaperExchangeError(f"Unsupported order type for paper: {type_u}")
+        if quantity is None or quantity <= 0:
+            raise PaperExchangeError("quantity must be positive")
+        if type_u == "LIMIT" and price is None:
+            raise PaperExchangeError("LIMIT order requires price")
         if client_id is None:
-            client_id = f"paper-{uuid.uuid4().hex[:12]}"
-        side = side.upper()
-        type = type.upper()
+            client_id = self._next_client_id(symbol)
 
-        # Validate basic params
-        if side not in ("BUY", "SELL"):
-            raise WallexError("Invalid side")
-        if type not in ("LIMIT", "MARKET", "STOP_LIMIT", "STOP_MARKET"):
-            raise WallexError("Unsupported order type for paper")
+        base = base_asset(symbol)
+        fee_rate = self._taker_fee_for(symbol)
+        depth = self._depth(symbol)
 
-        # For simplicity, treat STOP_* as LIMIT/MARKET with trigger not implemented
-        if type in ("STOP_LIMIT", "STOP_MARKET"):
-            raise WallexError("Stop orders not simulated in paper")
-
-        # Determine fee rate
-        fee_rate = self._get_taker_fee_rate()
-
-        # Execute matching
-        filled = 0.0
-        avg_price = 0.0
-        fills = []
-        status = PaperStatus.NEW
-        executed_qty = 0.0
-        fee_tmn = 0.0
-
-        if side == "BUY":
-            if type == "LIMIT":
-                if price is None:
-                    raise WallexError("LIMIT BUY requires price")
-                filled, avg_price, fills = self._match_limit_buy(symbol, price, quantity)
-            else:  # MARKET
-                filled, avg_price, fills = self._match_market_buy(symbol, quantity)
-        else:  # SELL
-            if type == "LIMIT":
-                if price is None:
-                    raise WallexError("LIMIT SELL requires price")
-                filled, avg_price, fills = self._match_limit_sell(symbol, price, quantity)
-            else:  # MARKET
-                filled, avg_price, fills = self._match_market_sell(symbol, quantity)
-
-        executed_qty = filled
-        notional = filled * avg_price if filled > 0 else 0.0
-        fee_tmn = notional * fee_rate
-
-        # Check balance and reserve
-        if side == "BUY":
-            needed_tmn = notional + fee_tmn
-            if not self._update_account_balance(-needed_tmn, {symbol.replace("TMN","").replace("USDT",""): filled}):
-                raise WallexError("Insufficient TMN balance")
+        if side_u == "BUY":
+            levels = depth.get("asks", [])
+            cap = price if type_u == "LIMIT" else None
         else:
-            base_asset = symbol.replace("TMN", "").replace("USDT", "")
-            if not self._update_account_balance(-fee_tmn, {base_asset: -filled}):
-                raise WallexError("Insufficient asset balance")
+            levels = depth.get("bids", [])
+            cap = price if type_u == "LIMIT" else None
 
-        if filled >= quantity - 1e-12:
+        match = book.fill_qty(levels, quantity, max_price=cap)
+        filled_qty = match["filled_qty"]
+        fills = match["fills"]
+        avg_price = match["avg_price"] or 0.0
+        notional = filled_qty * avg_price
+
+        fee_in_base = (side_u == "BUY" and self.cfg.trading.paper_buy_fee_in_base)
+        if fee_in_base:
+            fee_qty = filled_qty * fee_rate
+            fee_tmn = fee_qty * avg_price  # informational
+        else:
+            fee_tmn = notional * fee_rate
+
+        # ---- balance effects ----------------------------------------
+        free_deltas: Dict[str, float] = {}
+        lock_deltas: Dict[str, float] = {}
+        if side_u == "BUY":
+            cost = notional
+            if not fee_in_base:
+                cost += fee_tmn
+            free_deltas["TMN"] = -cost
+            credit = filled_qty - fee_qty if fee_in_base else filled_qty
+            free_deltas[base] = credit
+            remainder = quantity - filled_qty
+            if remainder > 1e-9 and type_u == "LIMIT":
+                lock_deltas["TMN"] = remainder * price
+        else:  # SELL
+            free_deltas[base] = -filled_qty
+            free_deltas["TMN"] = notional - fee_tmn
+            remainder = quantity - filled_qty
+            if remainder > 1e-9 and type_u == "LIMIT":
+                lock_deltas[base] = remainder
+
+        try:
+            self._apply_deltas(free_deltas, lock_deltas)
+        except PaperExchangeError:
+            raise
+
+        if filled_qty >= quantity - 1e-9:
             status = PaperStatus.FILLED
-        elif filled > 0:
+        elif filled_qty > 0:
             status = PaperStatus.PARTIALLY_FILLED
         else:
-            status = PaperStatus.NEW  # rests on book (not simulated further)
+            status = PaperStatus.NEW
 
-        # Record order in store
-        order_id = store_db.insert_order(
-            run_id=None,
-            client_id=client_id,
-            symbol=symbol,
-            side=side,
-            type=type,
-            price=price,
-            quantity=quantity,
-            status=status,
-            filled_quantity=executed_qty,
-            avg_fill_price=avg_price,
-            fee_tmn=fee_tmn,
-            dry_run=True,
-            request_json={"side": side, "symbol": symbol, "type": type, "price": price, "quantity": quantity},
-            response_json={"status": status, "filled": executed_qty, "avg_price": avg_price, "fee_tmn": fee_tmn},
+        fill_dicts = []
+        for p, q in fills:
+            fill_dicts.append({
+                "fee": q * fee_rate * (p if not fee_in_base else 1.0),
+                "feeAsset": base if fee_in_base else "TMN",
+                "price": p,
+                "quantity": q,
+                "sum": p * q,
+                "symbol": symbol,
+                "isBuyer": side_u == "BUY",
+                "timestamp": _now_iso(),
+            })
+
+        order_row_id = self._persist_order(
+            client_id=client_id, symbol=symbol, side=side_u, type_=type_u,
+            price=price, quantity=quantity, status=status,
+            filled_qty=filled_qty, avg_price=avg_price, fee_tmn=fee_tmn,
+            fills=fill_dicts, orig_qty=quantity,
         )
-        order = {
-            "client_id": client_id,
-            "symbol": symbol,
-            "side": side,
-            "type": type,
-            "price": price,
-            "quantity": quantity,
-            "executed_quantity": executed_qty,
-            "avg_price": avg_price,
-            "status": status,
-            "fee_tmn": fee_tmn,
-            "fills": fills,
-        }
-        return {"order": order, "raw": {"order_id": order_id}}
+        row = store_db.get_order_by_client_id(client_id)
+        order = self._order_dict(row, fill_dicts) if row else {}
+        return {"order": order, "raw": {"order_row_id": order_row_id}}
 
+    # ------------------------------------------------------------------ #
+    # cancel / get / list
+    # ------------------------------------------------------------------ #
     def cancel_order(self, client_id: str) -> Dict:
-        existing = store_db.get_order_by_client_id(client_id)
-        if not existing:
-            raise WallexError("Order not found")
-        if existing["status"] in (PaperStatus.FILLED, PaperStatus.CANCELED):
-            raise WallexError("Cannot cancel filled or already canceled order")
-        # Only refund if there was a filled portion that reserved funds (partial fill)
-        filled = float(existing.get("filled_quantity", 0))
-        if filled > 0:
-            # For simplicity, refund fee on filled portion? Not needed for now.
-            pass
-        store_db.update_order(existing["id"], status=PaperStatus.CANCELED)
-        return {"order": {"client_id": client_id, "status": PaperStatus.CANCELED}, "raw": {}}
+        row = store_db.get_order_by_client_id(client_id)
+        if row is None:
+            raise PaperExchangeError("Order not found")
+        status = row.get("status")
+        if status in (PaperStatus.FILLED, PaperStatus.CANCELED):
+            raise PaperExchangeError("Cannot cancel a finished order")
+        filled = float(row.get("filled_quantity") or 0.0)
+        orig = float(row.get("quantity") or 0.0)
+        remainder = orig - filled
+        side = row.get("side")
+        price = float(row.get("price") or 0.0)
+        symbol = row.get("symbol")
+        base = base_asset(symbol)
+        if remainder > 1e-9:
+            if side == "BUY":
+                self._apply_deltas({}, {"TMN": -remainder * price})
+            else:
+                self._apply_deltas({}, {base: -remainder})
+        self._update_order_row(row["id"], status=PaperStatus.CANCELED)
+        row = store_db.get_order_by_client_id(client_id)
+        return {"order": self._order_dict(row), "raw": {}}
 
     def get_order(self, client_id: str) -> Dict:
-        existing = store_db.get_order_by_client_id(client_id)
-        if not existing:
-            raise WallexError("Order not found")
-        return {"order": existing, "raw": {}}
+        row = store_db.get_order_by_client_id(client_id)
+        if row is None:
+            raise PaperExchangeError("Order not found")
+        return {"order": self._order_dict(row), "raw": {}}
 
-    def get_open_orders(self, symbol: Optional[str] = None) -> List[Dict]:
-        # fetch open positions? but we store orders. Simplify: return orders with status NEW or PARTIALLY_FILLED
-        # store_db has no list; we'll cheat by scanning orders table (not implemented). Return empty list.
-        return {"orders": [], "raw": {}}
+    def get_open_orders(self, symbol: Optional[str] = None) -> Dict:
+        rows = store_db.get_orders_by_status(list(_OPEN_STATUSES), dry_run=True)
+        if symbol:
+            rows = [r for r in rows if r.get("symbol") == symbol]
+        return {"orders": [self._order_dict(r) for r in rows], "raw": {}}
 
-    def get_balances(self) -> Dict[str, Dict[str, float]]:
-        acct = self._get_account()
-        out = {}
-        for asset, amount in acct.get("assets", {}).items():
-            out[asset] = {"free": amount, "locked": 0.0}
-        out["TMN"] = {"free": acct["tmn_balance"], "locked": 0.0}
-        return out
+    # ------------------------------------------------------------------ #
+    # resting-order matching
+    # ------------------------------------------------------------------ #
+    def check_open_orders(self) -> None:
+        """Re-evaluate resting LIMIT orders against the current depth.
 
-    def check_open_orders(self):
-        """Re-evaluate resting LIMIT orders against current depth.
-        Not fully implemented due to lack of order book persistence; placeholder."""
-        pass
+        BUY fills while best_ask <= order price; SELL fills while best_bid >=
+        order price. Fills partially when depth is thin. No background thread;
+        the executor/guardian calls this periodically.
+        """
+        rows = store_db.get_orders_by_status(list(_OPEN_STATUSES), dry_run=True)
+        for row in rows:
+            symbol = row.get("symbol")
+            side = row.get("side")
+            price = float(row.get("price") or 0.0)
+            if price <= 0:
+                continue
+            try:
+                depth = self._depth(symbol)
+            except Exception:
+                continue
+            if side == "BUY":
+                levels = depth.get("asks", [])
+                best = levels[0][0] if levels else None
+                if best is None or best > price:
+                    continue
+            else:
+                levels = depth.get("bids", [])
+                best = levels[0][0] if levels else None
+                if best is None or best < price:
+                    continue
+            filled = float(row.get("filled_quantity") or 0.0)
+            orig = float(row.get("quantity") or 0.0)
+            remaining = orig - filled
+            if remaining <= 1e-9:
+                continue
+            match = book.fill_qty(levels, remaining, max_price=price)
+            add_qty = match["filled_qty"]
+            if add_qty <= 1e-9:
+                continue
+            new_filled = filled + add_qty
+            avg_price = match["avg_price"] or 0.0
+            add_notional = add_qty * avg_price
+            fee_rate = self._taker_fee_for(symbol)
+            base = base_asset(symbol)
+            fee_in_base = (side == "BUY" and self.cfg.trading.paper_buy_fee_in_base)
+            if fee_in_base:
+                fee_qty = add_qty * fee_rate
+                fee_tmn = fee_qty * avg_price
+            else:
+                fee_tmn = add_notional * fee_rate
+            if side == "BUY":
+                cost = add_notional if not fee_in_base else add_notional
+                # release the locked TMN for the newly filled part
+                free_deltas = {"TMN": -cost, base: add_qty - (fee_qty if fee_in_base else 0.0)}
+                lock_deltas = {"TMN": -add_qty * price}
+            else:
+                free_deltas = {base: -add_qty, "TMN": add_notional - fee_tmn}
+                lock_deltas = {base: -add_qty}
+            try:
+                self._apply_deltas(free_deltas, lock_deltas)
+            except PaperExchangeError:
+                continue
+            status = PaperStatus.FILLED if new_filled >= orig - 1e-9 else PaperStatus.PARTIALLY_FILLED
+            self._update_order_row(
+                row["id"], status=status,
+                filled_quantity=new_filled,
+                avg_fill_price=avg_price,
+                fee_tmn=float(row.get("fee_tmn") or 0.0) + fee_tmn,
+            )
