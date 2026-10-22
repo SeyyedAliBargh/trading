@@ -1,0 +1,216 @@
+{
+  "top_level_keys": [
+    "result",
+    "message",
+    "success"
+  ],
+  "market_count": 469,
+  "entries": [
+    {
+      "symbol": "PEPETMN",
+      "base_asset": "PEPE",
+      "quote_asset": "TMN",
+      "fa_base_asset": "پپه",
+      "fa_quote_asset": "تومان",
+      "en_base_asset": "Pepe",
+      "en_quote_asset": "Toman",
+      "categories": [
+        4
+      ],
+      "price": "1.2481",
+      "is_new": false,
+      "is_spot": true,
+      "is_otc": true,
+      "is_margin": true,
+      "is_tmn_based": true,
+      "is_usdt_based": false,
+      "is_zero_fee": false,
+      "leverage_step": 0.5,
+      "max_leverage": 10,
+      "created_at": "2023-05-24T00:00:00Z",
+      "amount_precision": 0,
+      "price_precision": 4,
+      "flags": [],
+      "is_market_type_enable": false,
+      "otc_min_notional": 90000,
+      "otc_max_notional": 200000000,
+      "otc_buy_enabled": true,
+      "otc_sell_enabled": true,
+      "fair_price": {
+        "ask": "1.249150063410755",
+        "bid": "1.249150063410755",
+        "spot": {
+          "threshold": "4.00",
+          "max_acceptable_buy": "8.00",
+          "max_acceptable_sell": "8.00"
+        },
+        "margin_market": {
+          "threshold": null,
+          "max_acceptable_buy": null,
+          "max_acceptable_sell": null
+        },
+        "margin_limit": {
+          "threshold": "5.00",
+          "max_acceptable_buy": null,
+          "max_acceptable_sell": null
+        },
+        "sakoo": {
+          "threshold": "4.00",
+          "max_acceptable_buy": "8.00",
+          "max_acceptable_sell": "8.00"
+        },
+        "market_maker": {
+          "threshold": "5.00",
+          "max_acceptable_buy": "10.00",
+          "max_acceptable_sell": "10.00"
+        }
+      },
+      "change_24h": 5.33,
+      "volume_24h": 77538806596,
+      "change_7D": 15.69,
+      "quote_volume_24h": 94815225457.8454,
+      "spot_is_new": false,
+      "otc_is_new": false,
+      "highest_24h_price": "1.2556",
+      "lowest_24h_price": "1.16"
+    },
+    {
+      "symbol": "BTCTMN",
+      "base_asset": "BTC",
+      "quote_asset": "TMN",
+      "fa_base_asset": "بیت کوین",
+      "fa_quote_asset": "تومان",
+      "en_base_asset": "Bitcoin",
+      "en_quote_asset": "Toman",
+      "categories": [
+        44
+      ],
+      "price": "22538286551",
+      "is_new": false,
+      "is_spot": true,
+      "is_otc": true,
+      "is_margin": true,
+      "is_tmn_based": true,
+      "is_usdt_based": false,
+      "is_zero_fee": false,
+      "leverage_step": 0.5,
+      "max_leverage": 10,
+      "created_at": "2020-04-01T00:00:00Z",
+      "amount_precision": 8,
+      "price_precision": 0,
+      "flags": [],
+      "is_market_type_enable": true,
+      "otc_min_notional": 90000,
+      "otc_max_notional": 400000000,
+      "otc_buy_enabled": true,
+      "otc_sell_enabled": true,
+      "fair_price": {
+        "ask": "22620413772.25702026032856",
+        "bid": "22620413772.25702026032856",
+        "spot": {
+          "threshold": "4",
+          "max_acceptable_buy": "8",
+          "max_acceptable_sell": "8"
+        },
+        "margin_market": {
+          "threshold": null,
+          "max_acceptable_buy": null,
+          "max_acceptable_sell": null
+        },
+        "margin_limit": {
+          "threshold": "5",
+          "max_acceptable_buy": null,
+          "max_acceptable_sell": null
+        },
+        "sakoo": {
+          "threshold": "4",
+          "max_acceptable_buy": "8",
+          "max_acceptable_sell": "8"
+        },
+        "market_maker": {
+          "threshold": "5",
+          "max_acceptable_buy": "10",
+          "max_acceptable_sell": "10"
+        }
+      },
+      "change_24h": 4.53,
+      "volume_24h": 4.08264356,
+      "change_7D": 4.31,
+      "quote_volume_24h": 90321729090.67952,
+      "spot_is_new": false,
+      "otc_is_new": false,
+      "highest_24h_price": "22619999994",
+      "lowest_24h_price": "21521502006"
+    },
+    {
+      "symbol": "PUMPTMN",
+      "base_asset": "PUMP",
+      "quote_asset": "TMN",
+      "fa_base_asset": "پامپ فان",
+      "fa_quote_asset": "تومان",
+      "en_base_asset": "Pump fun",
+      "en_quote_asset": "Toman",
+      "categories": [
+        13
+      ],
+      "price": "1376",
+      "is_new": false,
+      "is_spot": true,
+      "is_otc": true,
+      "is_margin": false,
+      "is_tmn_based": true,
+      "is_usdt_based": false,
+      "is_zero_fee": false,
+      "leverage_step": null,
+      "max_leverage": null,
+      "created_at": "2025-08-20T00:00:00Z",
+      "amount_precision": 1,
+      "price_precision": 0,
+      "flags": [
+        "isRisky"
+      ],
+      "is_market_type_enable": false,
+      "otc_min_notional": 90000,
+      "otc_max_notional": 150000000,
+      "otc_buy_enabled": true,
+      "otc_sell_enabled": true,
+      "fair_price": {
+        "ask": "1369.68583889801744",
+        "bid": "1369.68583889801744",
+        "spot": {
+          "threshold": "4.00",
+          "max_acceptable_buy": "8.00",
+          "max_acceptable_sell": "8.00"
+        },
+        "margin_market": {
+          "threshold": null,
+          "max_acceptable_buy": null,
+          "max_acceptable_sell": null
+        },
+        "margin_limit": {
+          "threshold": "5.00",
+          "max_acceptable_buy": null,
+          "max_acceptable_sell": null
+        },
+        "sakoo": {
+          "threshold": "4.00",
+          "max_acceptable_buy": "8.00",
+          "max_acceptable_sell": "8.00"
+        },
+        "market_maker": {
+          "threshold": "5.00",
+          "max_acceptable_buy": "10.00",
+          "max_acceptable_sell": "10.00"
+        }
+      },
+      "change_24h": 11.15,
+      "volume_24h": 62316697.8,
+      "change_7D": 9.9,
+      "quote_volume_24h": 81090123054.1,
+      "spot_is_new": false,
+      "otc_is_new": false,
+      "highest_24h_price": "1390",
+      "lowest_24h_price": "1222"
+    }
+  ]
+}
