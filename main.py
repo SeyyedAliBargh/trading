@@ -372,6 +372,14 @@ class Agent:
             "run_id": self.run_id, "decision_id": row_id,
         }
         flags = {"use_news": bool(self.cfg.trading.USE_NEWS)}
+        # the SAME risk values the guard clamps with (single source of truth)
+        limits = {
+            "stop_pct_range": [self.cfg.risk.stop_pct_min,
+                                self.cfg.risk.stop_pct_max],
+            "target_pct_range": [self.cfg.risk.target_pct_min,
+                                 self.cfg.risk.target_pct_max],
+            "min_net_edge_pct": self.cfg.risk.min_net_edge_pct,
+        }
         mode = "paper" if bool(self.cfg.trading.dry_run) else "live"
 
         positions = []
@@ -389,7 +397,7 @@ class Agent:
                 recent = []
             input_json = build_input(symbol, features, sets["15m"], sets["1h"],
                                      sets["4h"], book_summary, costs, None,
-                                     recent, flags)
+                                     recent, limits=limits, flags=flags)
             votes = self.llm.decide_all(input_json, decision_id=row_id,
                                         run_id=self.run_id)
             vote = tally(votes, self.cfg.llm.min_agreeing,
@@ -465,7 +473,7 @@ class Agent:
             recent = []
         input_json = build_input(symbol, features, sets["15m"], sets["1h"],
                                  sets["4h"], book_summary, costs, position_summary,
-                                 recent, flags)
+                                 recent, limits=limits, flags=flags)
         votes = self.llm.decide_all(input_json, decision_id=row_id,
                                     run_id=self.run_id)
         vote = tally(votes, self.cfg.llm.min_agreeing, True)
