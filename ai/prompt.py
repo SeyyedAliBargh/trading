@@ -21,7 +21,10 @@ from typing import Any, Dict, List, Optional
 
 import config
 
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v2.1"
+
+# Reason length limit read from config (llm_reason_max_chars), not hardcoded.
+_REASON_MAX_CHARS = int(getattr(config.CONFIG.llm, "llm_reason_max_chars", 400))
 
 SYSTEM_PROMPT = (
     "You are a SPOT trading agent on the Wallex crypto exchange. Long-only: "
@@ -55,7 +58,8 @@ SYSTEM_PROMPT = (
     "also a failure: trade when edge exists. "
     'Respond with ONLY JSON: {"action": "BUY"|"SELL"|"HOLD", '
     '"confidence": number in [0,1], "stop_pct": number, '
-    '"target_pct": number, "reason": short string, max 200 characters}. '
+    '"target_pct": number, "reason": short string, '
+    f"max {_REASON_MAX_CHARS} characters}}. "
     "No markdown, no extra text."
 )
 

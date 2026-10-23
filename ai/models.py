@@ -26,7 +26,19 @@ import config
 from ai.prompt import SYSTEM_PROMPT, serialize_input
 
 VALID_ACTIONS = frozenset({"BUY", "SELL", "HOLD"})
-MAX_RAW_LOG_CHARS = 4096
+# Fallback only; the real limit comes from config.llm.llm_raw_store_max_chars.
+DEFAULT_RAW_MAX_CHARS = 200_000
+
+
+def _reason_limit() -> int:
+    """Max characters kept of a model's reason (config.llm.llm_reason_max_chars)."""
+    try:
+        limit = int(config.CONFIG.llm.llm_reason_max_chars)
+        if limit > 0:
+            return limit
+    except Exception:
+        pass
+    return 400
 
 
 class LlmError(Exception):
@@ -93,7 +105,7 @@ def parse_vote(content: str) -> Dict[str, Any]:
         "confidence": float(confidence),
         "stop_pct": float(stop_pct),
         "target_pct": float(target_pct),
-        "reason": reason[:200],
+        "reason": reason[:_reason_limit()],
     }
 
 
@@ -117,6 +129,13 @@ class BoxApiClient:
         self.cfg = cfg if cfg is not None else config.CONFIG
         self.db = db  # store module (store.db) or None; None disables logging
         self._transport = transport if transport is not None else self._default_transport
+        # full raw text is stored, capped only by config.llm.llm_raw_store_max_chars
+        try:
+            self._raw_max = int(self.cfg.llm.llm_raw_store_max_chars)
+            if self._raw_max <= 0:
+                raise ValueError
+        except Exception:
+            self._raw_max = DEFAULT_RAW_MAX_CHARS
 
     # -- transport ---------------------------------------------------------
     def _default_transport(self, payload: Dict[str, Any],
@@ -154,7 +173,7 @@ class BoxApiClient:
         try:
             self.db.insert_llm_call(
                 run_id=run_id, decision_id=decision_id, model=model,
-                raw_output=(raw or "")[:MAX_RAW_LOG_CHARS], parsed_json=parsed,
+                raw_output=(raw or "")[:self._raw_max], parsed_json=parsed,
                 valid=valid, prompt_tokens=tokens[0], completion_tokens=tokens[1],
                 latency_ms=latency_ms, error=error,
             )
@@ -212,7 +231,7 @@ class BoxApiClient:
             # HTTP-level failure
             if status != 200:
                 err = f"http_{status}"
-                self._log_call(model, decision_id, run_id, raw=json.dumps(body)[:MAX_RAW_LOG_CHARS],
+                self._log_call(model, decision_id, run_id, raw=json.dumps(body)[:self._raw_max],
                                parsed=None, valid=False, tokens=tokens,
                                latency_ms=latency_ms, error=err)
                 if status >= 500 and attempt_no == 1:

@@ -116,9 +116,39 @@ class TestParseVote:
             parse_vote("")
 
     def test_reason_truncated(self):
+        limit = config.CONFIG.llm.llm_reason_max_chars
         v = parse_vote('{"action": "BUY", "confidence": 0.7, "stop_pct": 0.01,'
                        ' "target_pct": 0.03, "reason": "' + "x" * 500 + '"}')
-        assert len(v["reason"]) == 200
+        assert len(v["reason"]) == limit  # config.llm.llm_reason_max_chars
+
+    def test_reason_limit_follows_config_override(self, monkeypatch):
+        tuned = dataclasses.replace(
+            config.CONFIG,
+            llm=dataclasses.replace(config.CONFIG.llm, llm_reason_max_chars=10))
+        monkeypatch.setattr(config, "CONFIG", tuned)
+        v = parse_vote('{"action": "BUY", "confidence": 0.7, "stop_pct": 0.01,'
+                       ' "target_pct": 0.03, "reason": "' + "y" * 500 + '"}')
+        assert len(v["reason"]) == 10
+
+    def test_raw_longer_than_4k_stored_in_full(self, temp_db):
+        """v2.2: the old 4k truncation is gone; the full raw text is stored."""
+        long_content = ('{"action": "HOLD", "confidence": 0.5, "stop_pct": 0.01,'
+                        ' "target_pct": 0.02, "reason": "' + "z" * 9000 + '"}')
+        ft = FakeTransport([long_content])
+        client = make_client(ft, db=store_db)
+        client.decide_all(INPUT, models=["m1"])
+        row = llm_rows(temp_db)[0]
+        assert len(row["raw_output"]) == len(long_content)  # > 4k, not cut
+
+    def test_raw_capped_at_config_max(self, temp_db):
+        cfg = dataclasses.replace(
+            config.CONFIG,
+            llm=dataclasses.replace(config.CONFIG.llm, llm_raw_store_max_chars=100))
+        ft = FakeTransport([VALID + " ".join(["pad"] * 2000)])
+        client = BoxApiClient(cfg, db=store_db, transport=ft)
+        client.decide_all(INPUT, models=["m1"])
+        row = llm_rows(temp_db)[0]
+        assert len(row["raw_output"]) == 100
 
 
 class TestDecideAll:

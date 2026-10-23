@@ -36,6 +36,24 @@ CLOSE_LOCK_TIMEOUT_SEC = 30.0
 CRITICAL_AFTER_ATTEMPTS = 10
 EPS = 1e-9
 
+_PRINT_LOCK = threading.Lock()
+
+
+def _console(message: str) -> None:
+    """ASCII-safe, crash-proof console line (observability only)."""
+    try:
+        with _PRINT_LOCK:
+            print(message.encode("ascii", "replace").decode("ascii"), flush=True)
+    except Exception:
+        pass
+
+
+def _verbose(cfg: Any) -> int:
+    try:
+        return int(getattr(cfg.trading, "CONSOLE_VERBOSITY", 1))
+    except Exception:
+        return 1
+
 # executor-internal close reasons -> store close_reason enum
 REASON_TO_DB = {
     "SL": "STOP_LOSS",
@@ -380,6 +398,9 @@ class Executor:
                         f"create LIMIT BUY failed on {symbol}: {exc}", detail)
             return self._hold(symbol, "order_rejected", detail)
         created = (resp or {}).get("order") or {}
+        if _verbose(self.cfg) >= 1:
+            _console(f"[ENTRY] {symbol} LIMIT BUY {qty:.8g} @ {limit_price:.8g} "
+                     f"placed ({client_id})")
         order_row_id = self._persist_order(
             client_id=client_id, symbol=symbol, side="BUY", order_type="LIMIT",
             price=limit_price, quantity=qty, order=created,
@@ -409,6 +430,8 @@ class Executor:
                         f"entry order {client_id} on {symbol} did not fill; cancelled",
                         {"symbol": symbol, "client_id": client_id,
                          "decision_uid": ctx.decision_uid})
+            if _verbose(self.cfg) >= 1:
+                _console(f"[ENTRY] {symbol} unfilled, cancelled ({client_id})")
             return self._hold(symbol, "entry_unfilled",
                                {"client_id": client_id, "order_id": order_row_id})
 
@@ -453,6 +476,9 @@ class Executor:
             pass
 
         partial = executed < qty - EPS
+        if _verbose(self.cfg) >= 1:
+            _console(f"[ENTRY] {symbol} {'partially ' if partial else ''}filled "
+                     f"{executed:.8g} @ {entry_price:.8g}")
         self._event("INFO", "ENTRY_FILLED",
                     f"{'partial ' if partial else ''}entry on {symbol}: "
                     f"{executed} @ {entry_price}",
@@ -604,6 +630,9 @@ class Executor:
                     dust_value - entry_value - entry_fees, exit_order_id)
 
             # place one closing order (MARKET first, marketable LIMIT fallback)
+            if _verbose(self.cfg) >= 1:
+                _console(f"[CLOSE] {symbol} attempt {attempt}: sell {qty:.8g} "
+                         f"(limit escalation +{escalate_ticks} ticks)")
             self._event("INFO", "CLOSE_ATTEMPT",
                         f"close attempt {attempt} for {symbol}: selling {qty}",
                         {"symbol": symbol, "attempt": attempt, "qty": qty,
@@ -620,6 +649,8 @@ class Executor:
                             {"symbol": symbol, "attempt": attempt, "failed": True,
                              "error": str(exc), "transient": _is_transient(exc),
                              "rate_limited": _is_rate_limit(exc)})
+                if _verbose(self.cfg) >= 1:
+                    _console(f"[CLOSE] {symbol} attempt {attempt} failed: {exc}")
                 if attempt >= CRITICAL_AFTER_ATTEMPTS and \
                         attempt % CRITICAL_AFTER_ATTEMPTS == 0:
                     self._event("ERROR", "CRITICAL",
@@ -634,6 +665,9 @@ class Executor:
             proceeds += filled * _f(res.get("avg_price"))
             close_fees += _f(res.get("fee"))
             exit_order_id = res.get("order_row_id") or exit_order_id
+            if _verbose(self.cfg) >= 1:
+                _console(f"[CLOSE] {symbol} attempt {attempt}: filled "
+                         f"{filled:.8g} @ {_f(res.get('avg_price')):.8g}")
             if filled < qty - EPS:
                 # unfilled remainder: escalate the limit price for the retry
                 escalate_ticks += int(t.close_limit_ticks)

@@ -83,7 +83,13 @@ class TestConfigLoads:
         assert config.CONFIG.storage.log_file_path == "runtime/agent.log"
         # per-model LLM timeout: 20s (observed model latency 3.4-7.3s)
         assert config.CONFIG.llm.per_model_timeout_sec == 20
-        assert config.CONFIG.risk.per_trade_fraction == 0.20
+        # observability (UI step)
+        assert config.CONFIG.trading.CONSOLE_VERBOSITY == 1
+        assert config.CONFIG.trading.guardian_console_interval_sec == 30
+        assert config.CONFIG.trading.guardian_watch_log_interval_sec == 30
+        assert config.CONFIG.llm.llm_raw_store_max_chars == 200_000
+        assert config.CONFIG.llm.llm_reason_max_chars == 400
+        assert config.CONFIG.risk.per_trade_fraction == 0.10  # tuned by the owner
         assert config.CONFIG.risk.max_positions == 2
         assert config.CONFIG.risk.max_daily_loss_fraction == 0.03
         assert config.CONFIG.risk.stop_pct_min == 0.01
@@ -93,7 +99,7 @@ class TestConfigLoads:
         assert config.CONFIG.risk.min_reward_risk == 2.0
         assert config.CONFIG.risk.min_net_edge_pct == 0.002
         assert config.CONFIG.risk.min_seconds_between_trades == 900
-        assert config.CONFIG.risk.min_confidence == 0.6
+        assert config.CONFIG.risk.min_confidence == 0.5  # tuned by the owner
         assert config.CONFIG.risk.min_order_tmn == 100_000
         assert config.CONFIG.risk.initial_capital_tmn == 5_000_000
         assert config.CONFIG.storage.DB_PATH == "runtime/agent.db"
@@ -233,6 +239,27 @@ class TestValidateValueErrors:
         with pytest.warns(UserWarning, match="log_file_path"):
             config.validate_config(make_config(
                 storage={"log_file_path": "logs/agent.log"}))
+
+    def test_console_verbosity_must_be_0_1_or_2(self):
+        with pytest.raises(ValueError, match="CONSOLE_VERBOSITY"):
+            config.validate_config(make_config(trading={"CONSOLE_VERBOSITY": 3}))
+        with pytest.raises(ValueError, match="CONSOLE_VERBOSITY"):
+            config.validate_config(make_config(trading={"CONSOLE_VERBOSITY": -1}))
+        # boundaries pass
+        for level in (0, 1, 2):
+            config.validate_config(
+                make_config(trading={"CONSOLE_VERBOSITY": level}))
+
+    def test_guardian_observability_intervals_must_be_positive(self):
+        for key in ("guardian_console_interval_sec",
+                    "guardian_watch_log_interval_sec"):
+            with pytest.raises(ValueError, match=key):
+                config.validate_config(make_config(trading={key: 0}))
+
+    def test_llm_text_limits_must_be_positive(self):
+        for key in ("llm_raw_store_max_chars", "llm_reason_max_chars"):
+            with pytest.raises(ValueError, match=key):
+                config.validate_config(make_config(llm={key: 0}))
 
     def test_clean_config_passes_silently(self):
         with warnings.catch_warnings():

@@ -72,7 +72,7 @@ class TestCheckEntryPass:
         assert isinstance(res, GuardResult)
         assert res.allowed is True
         assert res.reasons == []
-        assert res.size_tmn == pytest.approx(1_000_000.0)  # 0.20 * 5M
+        assert res.size_tmn == pytest.approx(500_000.0)  # 0.10 * 5M (owner tuning)
         assert res.stop_pct == pytest.approx(0.015)
         assert res.target_pct == pytest.approx(0.045)
 
@@ -94,9 +94,10 @@ class TestCheckEntryPass:
 
     def test_size_capped_by_free_tmn(self, temp_db):
         res = check_entry(store_db, config.CONFIG, SYMBOL, make_decision(),
-                          make_snapshot(total_value_tmn=5_000_000.0, free_tmn=800_000.0))
-        assert res.size_tmn == pytest.approx(800_000.0)
-        assert res.allowed is True  # 800k >= min_order_tmn
+                          make_snapshot(total_value_tmn=5_000_000.0, free_tmn=300_000.0))
+        # raw size 0.10*5M = 500k, capped by the 300k of spendable TMN
+        assert res.size_tmn == pytest.approx(300_000.0)
+        assert res.allowed is True  # 300k >= min_order_tmn
 
 
 class TestRuleFailures:
@@ -198,8 +199,9 @@ class TestRuleFailures:
         assert res.allowed is True
 
     def test_min_confidence(self, temp_db):
+        # 0.4 is below the (owner-tuned) min_confidence of 0.5
         res = check_entry(store_db, config.CONFIG, SYMBOL,
-                          make_decision(confidence_mean=0.5), make_snapshot())
+                          make_decision(confidence_mean=0.4), make_snapshot())
         assert res.allowed is False
         assert any("confidence" in r for r in res.reasons)
 

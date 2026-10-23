@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task Force Wallex Agent</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+      <path d="M3 17 L9 9 L14 13 L21 5" fill="none" stroke="currentColor"
+            stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="21" cy="5" r="2" fill="currentColor"/>
+    </svg>
+    <div>
+      <div class="appname">Task Force Wallex Agent</div>
+      <div class="apptag">unofficial monitoring dashboard</div>
+    </div>
+  </div>
+  <div class="topstatus">
+    <span id="mode-badge" class="badge mode unknown" title="Run mode">...</span>
+    <span id="run-id" class="dim">run -</span>
+    <span id="uptime" class="dim"></span>
+  </div>
+  <div class="topright">
+    <span id="conn-dot" class="dot" title="Connection"></span>
+    <div class="menu-wrap">
+      <button id="export-btn" class="btn" type="button">Export</button>
+      <div id="export-menu" class="menu hidden">
+        <a href="/api/export/decisions.csv">decisions.csv</a>
+        <a href="/api/export/trades.csv">trades.csv</a>
+        <a href="/api/export/events.csv">events.csv</a>
+        <a href="/api/export/report.txt">report.txt</a>
+        <a href="/api/export/all.json">all.json</a>
+      </div>
+    </div>
+    <button id="theme-btn" class="btn" type="button" title="Toggle theme">Theme</button>
+  </div>
+</header>
+
+<main>
+  <section id="kpis" class="kpi-row" aria-label="Key numbers">
+    <div class="kpi"><div class="kpi-label">Total value (TMN)</div>
+      <div class="kpi-value" id="kpi-equity">-</div>
+      <div class="kpi-sub" id="kpi-free">free TMN -</div></div>
+    <div class="kpi"><div class="kpi-label">Return</div>
+      <div class="kpi-value" id="kpi-return">-</div>
+      <div class="kpi-sub" id="kpi-dd">max DD -</div></div>
+    <div class="kpi"><div class="kpi-label">Open positions</div>
+      <div class="kpi-value" id="kpi-open">-</div>
+      <div class="kpi-sub" id="kpi-trades">trades -</div></div>
+    <div class="kpi"><div class="kpi-label">Decisions</div>
+      <div class="kpi-value" id="kpi-decisions">-</div>
+      <div class="kpi-sub" id="kpi-decisions-break">B/H/S -</div></div>
+  </section>
+
+  <section class="card" id="equity-card" aria-label="Equity chart">
+    <div class="card-head">
+      <h2>Equity</h2>
+      <span id="equity-range" class="dim"></span>
+    </div>
+    <div id="equity-chart" class="chart-box"><svg id="equity-svg"
+      preserveAspectRatio="none"></svg>
+      <div id="equity-tip" class="tip hidden"></div></div>
+    <div id="equity-empty" class="empty hidden">No balance snapshots yet.</div>
+  </section>
+
+  <div class="grid2">
+    <section class="card" id="guardian-card" aria-label="Guardian watch">
+      <div class="card-head"><h2>Guardian</h2>
+        <span id="guardian-hb" class="dim"></span></div>
+      <div id="guardian-list" class="guardian-list"></div>
+      <div id="guardian-empty" class="empty hidden">
+        No GUARDIAN_WATCH events yet. The guardian writes one watch row per
+        symbol every 30 seconds once the bot is running.</div>
+    </section>
+
+    <section class="card" id="positions-card" aria-label="Open positions">
+      <div class="card-head"><h2>Open positions</h2></div>
+      <div id="positions-list" class="positions-list"></div>
+      <div id="positions-empty" class="empty hidden">No open positions.</div>
+    </section>
+  </div>
+
+  <section class="card" id="decisions-card" aria-label="Decision feed">
+    <div class="card-head"><h2>Decision feed</h2></div>
+    <div class="filters" id="decisions-filters">
+      <input id="search" class="input" type="search"
+             placeholder="Search reason / symbol..." aria-label="Search">
+      <span id="symbol-chips" class="chips"></span>
+      <span id="action-chips" class="chips"></span>
+      <label class="toggle"><input type="checkbox" id="only-signals">
+        BUY/SELL only</label>
+    </div>
+    <div id="decisions-list" class="decisions-list"></div>
+    <div id="decisions-empty" class="empty hidden">No decisions yet.</div>
+  </section>
+
+  <section class="card" id="trades-card" aria-label="Trades">
+    <div class="card-head"><h2>Trades</h2></div>
+    <div class="table-wrap"><table id="trades-table" class="table">
+      <thead><tr>
+        <th data-sort="symbol">Symbol</th>
+        <th data-sort="opened_at">Opened</th>
+        <th data-sort="closed_at">Closed</th>
+        <th data-sort="entry_price">Entry</th>
+        <th data-sort="close_price">Exit</th>
+        <th data-sort="pnl_tmn">PnL TMN</th>
+        <th data-sort="pnl_pct">PnL %</th>
+        <th>Exit reason</th>
+      </tr></thead>
+      <tbody id="trades-body"></tbody>
+    </table></div>
+    <div id="trades-empty" class="empty hidden">No trades yet.</div>
+  </section>
+
+  <div class="grid2">
+    <section class="card" id="guardrej-card" aria-label="Guard rejections">
+      <div class="card-head"><h2>Guard rejections</h2></div>
+      <div id="guardrej-list" class="bars"></div>
+      <div id="guardrej-empty" class="empty hidden">No rule rejections.</div>
+    </section>
+
+    <section class="card" id="llm-card" aria-label="Model stats">
+      <div class="card-head"><h2>Model stats</h2></div>
+      <div class="table-wrap"><table class="table"><thead><tr>
+        <th>Model</th><th>Calls</th><th>Errors</th><th>p95 ms</th><th>Tokens</th>
+      </tr></thead><tbody id="llm-body"></tbody></table></div>
+      <div id="llm-empty" class="empty hidden">No model calls yet.</div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card" id="events-card" aria-label="Events">
+      <div class="card-head"><h2>Events</h2>
+        <label class="toggle"><input type="checkbox" id="events-autoscroll" checked>
+          autoscroll</label>
+        <select id="events-kind" class="input" aria-label="Filter kind">
+          <option value="">all kinds</option>
+        </select>
+      </div>
+      <div id="events-list" class="events-list" dir="ltr"></div>
+      <div id="events-empty" class="empty hidden">No events.</div>
+    </section>
+
+    <section class="card" id="logtail-card" aria-label="Live log">
+      <div class="card-head"><h2>Live log</h2>
+        <label class="toggle"><input type="checkbox" id="logtail-autoscroll" checked>
+          autoscroll</label></div>
+      <div id="logtail-lines" class="logtail" dir="ltr"></div>
+      <div id="logtail-empty" class="empty hidden">Log tail unavailable.</div>
+    </section>
+  </div>
+</main>
+
+<footer id="footer">
+  <span id="foot-paper-note"></span>
+  <span id="foot-db" class="dim"></span>
+  <span id="foot-refresh" class="dim"></span>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

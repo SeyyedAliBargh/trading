@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ["probe_readonly", "probe_orders", "probe_llm", "report", "reset_paper"]
+SCRIPTS = ["probe_readonly", "probe_orders", "probe_llm", "report",
+           "reset_paper", "ui_reference_fetch"]
 
 
 def _run(args, cwd):
@@ -32,3 +33,17 @@ def test_script_help_via_module_flag(name):
     assert result.returncode == 0, result.stderr
     assert "ModuleNotFoundError" not in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_ui_server_help_from_foreign_cwd(tmp_path):
+    result = _run([str(PROJECT_ROOT / "ui" / "server.py"), "--help"], tmp_path)
+    assert result.returncode == 0, result.stderr
+    assert "ModuleNotFoundError" not in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_main_help_from_foreign_cwd(tmp_path):
+    result = _run([str(PROJECT_ROOT / "main.py"), "--help"], tmp_path)
+    assert result.returncode == 0, result.stderr
+    for flag in ("--no-ui", "--ui-port", "--ui-host", "--verbose", "--quiet"):
+        assert flag in result.stdout

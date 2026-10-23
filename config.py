@@ -84,6 +84,12 @@ class LlmConfig:
     per_model_timeout_sec: float = 20
     # How many models must agree on the same direction for a signal to count.
     min_agreeing: int = 2
+    # Max characters of the raw model response stored in llm_calls.raw_output
+    # (full text; the old 4k truncation is gone). Validated > 0.
+    llm_raw_store_max_chars: int = 200_000
+    # Max characters kept of the model's "reason" field (parse_vote + prompt text
+    # read this; the old hardcoded 200 is gone). Validated > 0.
+    llm_reason_max_chars: int = 400
 
 
 @dataclass(frozen=True)
@@ -149,6 +155,12 @@ class TradingConfig:
     sync_interval_sec: int = 300
     # Seconds between guardian "still alive" heartbeat events.
     heartbeat_interval_sec: int = 300
+    # Console verbosity: 0 quiet, 1 normal, 2 verbose (CLI --quiet/--verbose override).
+    CONSOLE_VERBOSITY: int = 1
+    # How often (seconds) the guardian prints one watch line per symbol (verbosity >= 1).
+    guardian_console_interval_sec: int = 30
+    # How often (seconds) the guardian writes one GUARDIAN_WATCH event per symbol.
+    guardian_watch_log_interval_sec: int = 30
     # Starting balance of the paper account, in toman (paper mode only).
     paper_initial_capital_tmn: float = 5_000_000
     # conservative placeholder taker fee used in paper mode only if GET /v1/account/fee fails; replace after the real fee is known
@@ -166,7 +178,7 @@ class RiskConfig:
     """Hard risk limits enforced by risk/guard.py before any ENTRY (exits are exempt)."""
 
     # Fraction of current capital allocated to one trade (position size = capital * fraction).
-    per_trade_fraction: float = 0.20
+    per_trade_fraction: float = 0.10
     # Maximum number of simultaneously open positions.
     max_positions: int = 2
     # Stop taking entries for the rest of the day after losing this fraction of capital.
@@ -188,7 +200,7 @@ class RiskConfig:
     # Minimum seconds between two entries (exit orders are never blocked by this).
     min_seconds_between_trades: int = 900
     # Minimum model confidence (0..1) required for an entry.
-    min_confidence: float = 0.6
+    min_confidence: float = 0.5
     # Hard floor for the order size in toman (our own risk floor; the exchange's
     # real spot minimum is still unknown -- probes found none in the markets response).
     min_order_tmn: float = 100_000
@@ -286,9 +298,16 @@ def validate_config(cfg: Config) -> None:
         raise ValueError(f"min_order_tmn ({r.min_order_tmn}) must be > 0")
     # --- STEP P-B execution-layer tunables --------------------------------
     for name in ("balance_snapshot_interval_sec", "sync_interval_sec",
-                 "heartbeat_interval_sec"):
+                 "heartbeat_interval_sec", "guardian_console_interval_sec",
+                 "guardian_watch_log_interval_sec"):
         if getattr(t, name) <= 0:
             raise ValueError(f"{name} ({getattr(t, name)}) must be > 0")
+    if t.CONSOLE_VERBOSITY not in (0, 1, 2):
+        raise ValueError(
+            f"CONSOLE_VERBOSITY ({t.CONSOLE_VERBOSITY}) must be 0, 1 or 2")
+    for name in ("llm_raw_store_max_chars", "llm_reason_max_chars"):
+        if getattr(cfg.llm, name) <= 0:
+            raise ValueError(f"{name} ({getattr(cfg.llm, name)}) must be > 0")
     for name in ("order_poll_interval_sec", "close_fill_timeout_sec",
                  "close_retry_backoff_sec", "close_retry_backoff_cap_sec",
                  "ratelimit_backoff_start_sec", "ratelimit_backoff_cap_sec"):

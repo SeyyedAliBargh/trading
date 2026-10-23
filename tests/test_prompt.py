@@ -45,7 +45,7 @@ def make_decisions(n=3):
 
 class TestConstants:
     def test_prompt_version(self):
-        assert PROMPT_VERSION == "v2"
+        assert PROMPT_VERSION == "v2.1"  # v2.1: reason limit read from config
 
     def test_system_prompt_contract(self):
         assert "SPOT" in SYSTEM_PROMPT
@@ -59,7 +59,9 @@ class TestConstants:
         assert "calibrated" in SYSTEM_PROMPT and "holding horizon" in SYSTEM_PROMPT
         assert '"action"' in SYSTEM_PROMPT              # JSON-only output
         assert "stop_pct" in SYSTEM_PROMPT and "target_pct" in SYSTEM_PROMPT
-        assert "200" in SYSTEM_PROMPT                    # reason length cap
+        # v2.1: the reason cap is read from config, not hardcoded
+        limit = config.CONFIG.llm.llm_reason_max_chars
+        assert f"max {limit} characters" in SYSTEM_PROMPT
         assert "No markdown, no extra text" in SYSTEM_PROMPT
 
     def test_system_prompt_mentions_regime_and_limits(self):

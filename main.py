@@ -18,9 +18,13 @@ and the loop backs off (start 2s, cap 60s, reset on a clean cycle). LLM
 errors/timeouts already degrade to HOLD votes in ai.models / ai.vote.
 """
 import argparse
+import dataclasses
+import json
 import logging
 import logging.handlers
+import sqlite3
 import sys
+import textwrap
 import threading
 import time
 import traceback
@@ -45,6 +49,94 @@ from risk.guard import check_entry, exit_allowed
 CANDLE_1M_WINDOW_SEC = 6 * 3600
 CANDLE_1H_WINDOW_SEC = 72 * 3600
 
+PRINT_LOCK = threading.Lock()
+BLOCK_WIDTH = 100
+FILE_DETAIL_LOGGER = "botdetail"  # file-only: full blocks + full LLM raw text
+
+
+def _ascii(text: Any) -> str:
+    """ASCII-safe text for the console (non-ASCII never crashes printing)."""
+    return str(text).encode("ascii", "replace").decode("ascii")
+
+
+def _print_block(text: str) -> None:
+    """Print a multi-line block under the shared lock so parallel symbol
+    threads never interleave. Never raises."""
+    try:
+        with PRINT_LOCK:
+            print(_ascii(text), flush=True)
+    except Exception:
+        pass
+
+
+def _file_log(text: str) -> None:
+    """Log to the rotating file only (never the console). Never raises."""
+    try:
+        logging.getLogger(FILE_DETAIL_LOGGER).info(text)
+    except Exception:
+        pass
+
+
+def format_decision_block(dec: Dict[str, Any], votes: List[Dict[str, Any]],
+                          rules: List[Dict[str, Any]], llm_rows: List[Dict[str, Any]],
+                          verbosity: int) -> str:
+    """Pure formatter for the per-decision console/file block (unit-tested).
+
+    dec: decision row fields (ts, symbol, source, final_action, outcome,
+    reason, confidence, decision_uid, vote_action); votes: per-model dicts
+    with FULL reasons; rules: risk_checks rows; llm_rows: llm_calls rows
+    (raw text shown only at verbosity >= 2).
+    """
+    lines: List[str] = []
+    uid = str(dec.get("decision_uid") or "")
+    lines.append("=" * BLOCK_WIDTH)
+    lines.append(f"[DECISION] {dec.get('symbol')} {dec.get('ts', '')} "
+                 f"source={dec.get('source')} uid={uid[:8]} -> "
+                 f"{dec.get('final_action')} ({dec.get('outcome')})")
+    for v in votes:
+        err = f" ERROR={v.get('error')}" if v.get("error") else ""
+        lines.append(f"  model {v.get('model')}: {v.get('action')} "
+                     f"conf={v.get('confidence')} stop={v.get('stop_pct')} "
+                     f"target={v.get('target_pct')}{err}")
+        reason = str(v.get("reason") or "")
+        wrapped = textwrap.wrap("reason: " + reason, BLOCK_WIDTH - 4) \
+            or ["reason: -"]
+        for w in wrapped:
+            lines.append("    " + w)
+    if votes:
+        lines.append(f"  vote result: action={dec.get('vote_action')} "
+                     f"confidence={dec.get('confidence')}")
+    failed = [r for r in rules if not r.get("passed")]
+    if rules:
+        lines.append(f"  guard: {'REJECTED' if failed else 'PASSED'}")
+        shown = rules if verbosity >= 2 else failed
+        for r in shown:
+            state = "PASS" if r.get("passed") else "FAIL"
+            line = (f"    [{state}] {r.get('rule')} value={r.get('value')} "
+                    f"threshold={r.get('threshold')}")
+            message = str(r.get("message") or "").strip()
+            if message:
+                line += f" {message}"
+            lines.append(line.rstrip())
+    else:
+        lines.append("  guard: not consulted")
+    outcome_line = f"  outcome: {dec.get('outcome')}"
+    if dec.get("reason"):
+        outcome_line += f" ({dec.get('reason')})"
+    lines.append(outcome_line)
+    if verbosity >= 2:
+        for row in llm_rows:
+            latency = row.get("latency_ms")
+            latency_s = f"{float(latency):.0f}ms" if latency is not None else "?"
+            lines.append(f"  raw [{row.get('model')}] latency={latency_s} "
+                         f"tokens={row.get('prompt_tokens')}+"
+                         f"{row.get('completion_tokens')}")
+            for w in textwrap.wrap(str(row.get("raw_output") or ""),
+                                   BLOCK_WIDTH - 6) or ["(empty)"]:
+                lines.append("      " + w)
+    lines.append("=" * BLOCK_WIDTH)
+    return "\n".join(lines)
+
 
 class Backoff:
     """Exponential backoff for Wallex 429s: start*2^(n-1), capped; resets on success."""
@@ -68,7 +160,10 @@ class Backoff:
 
 
 def setup_logging(cfg: config.Config) -> None:
-    """Console + rotating file under runtime/; ASCII-safe file output."""
+    """Console + rotating file under runtime/; ASCII-safe file output.
+
+    The file-only 'botdetail' logger carries the full decision blocks and the
+    FULL raw LLM text regardless of console verbosity."""
     log_path = Path(cfg.storage.log_file_path)
     log_path.parent.mkdir(parents=True, exist_ok=True)
     root = logging.getLogger()
@@ -79,13 +174,26 @@ def setup_logging(cfg: config.Config) -> None:
         console = logging.StreamHandler(sys.stdout)
         console.setFormatter(fmt)
         root.addHandler(console)
-    if not any(isinstance(h, logging.handlers.RotatingFileHandler) for h in root.handlers):
+    detail_logger = logging.getLogger(FILE_DETAIL_LOGGER)
+    if not any(isinstance(h, logging.handlers.RotatingFileHandler)
+               for h in detail_logger.handlers):
         try:
             file_handler = logging.handlers.RotatingFileHandler(
                 str(log_path), maxBytes=5_000_000, backupCount=3,
                 encoding="ascii", errors="replace")
             file_handler.setFormatter(fmt)
-            root.addHandler(file_handler)
+            detail_logger.addHandler(file_handler)
+            detail_logger.propagate = False  # never to the console
+            detail_logger.setLevel(logging.INFO)
+        except OSError as exc:
+            print(f"WARNING: could not open log file {log_path}: {exc}", file=sys.stderr)
+    if not any(isinstance(h, logging.handlers.RotatingFileHandler) for h in root.handlers):
+        try:
+            root_file = logging.handlers.RotatingFileHandler(
+                str(log_path), maxBytes=5_000_000, backupCount=3,
+                encoding="ascii", errors="replace")
+            root_file.setFormatter(fmt)
+            root.addHandler(root_file)
         except OSError as exc:
             print(f"WARNING: could not open log file {log_path}: {exc}", file=sys.stderr)
 
@@ -95,6 +203,16 @@ def build_parser() -> argparse.ArgumentParser:
         prog="main.py", description="Wallex SPOT trading agent")
     parser.add_argument("--once", action="store_true",
                         help="run one decision cycle over all symbols and exit")
+    parser.add_argument("--verbose", action="store_true",
+                        help="console verbosity 2 (full blocks, raw model text)")
+    parser.add_argument("--quiet", action="store_true",
+                        help="console verbosity 0 (no per-cycle output)")
+    parser.add_argument("--no-ui", action="store_true",
+                        help="do not start the dashboard UI thread")
+    parser.add_argument("--ui-port", type=int, default=8765,
+                        help="dashboard port (default 8765)")
+    parser.add_argument("--ui-host", default="127.0.0.1",
+                        help="dashboard bind address (default 127.0.0.1)")
     return parser
 
 
@@ -185,6 +303,61 @@ class Agent:
                     "rate_limited": False}
 
     # ------------------------------------------------------------------ #
+    # observability: one block per decision (console + file)
+    # ------------------------------------------------------------------ #
+    def _gather_block_data(self, result: Dict[str, Any]):
+        """Read back everything the block needs from the store (never raises)."""
+        row_id = result.get("decision_row_id")
+        if row_id is None:
+            return None, [], [], []
+        dec_row: Optional[Dict[str, Any]] = None
+        rules: List[Dict[str, Any]] = []
+        llm_rows: List[Dict[str, Any]] = []
+        try:
+            conn = sqlite3.connect(self.cfg.storage.DB_PATH)
+            try:
+                conn.row_factory = sqlite3.Row
+                row = conn.execute(
+                    "SELECT * FROM decisions WHERE id = ?", (row_id,)).fetchone()
+                dec_row = dict(row) if row is not None else None
+                rules = [dict(r) for r in conn.execute(
+                    "SELECT * FROM risk_checks WHERE decision_id = ? ORDER BY id",
+                    (row_id,)).fetchall()]
+                llm_rows = [dict(r) for r in conn.execute(
+                    "SELECT * FROM llm_calls WHERE decision_id = ? ORDER BY id",
+                    (row_id,)).fetchall()]
+            finally:
+                conn.close()
+        except Exception:
+            return None, [], [], []
+        if not dec_row:
+            return None, [], [], []
+        votes: List[Dict[str, Any]] = []
+        try:
+            votes = json.loads(dec_row.get("votes_json") or "[]")
+        except (TypeError, ValueError):
+            votes = []
+        dec = dict(dec_row)
+        dec["vote_action"] = result.get("vote_action")
+        return dec, votes, rules, llm_rows
+
+    def _emit_decision_output(self, result: Dict[str, Any]) -> None:
+        """Console block (verbosity-gated) + file detail (always full). Pure
+        observability: never raises, never touches the trading path."""
+        try:
+            dec, votes, rules, llm_rows = self._gather_block_data(result)
+            if dec is None:
+                return
+            # the file always gets the FULL detail incl. raw text
+            _file_log(format_decision_block(dec, votes, rules, llm_rows, 2))
+            verbosity = int(getattr(self.cfg.trading, "CONSOLE_VERBOSITY", 1))
+            if verbosity >= 1:
+                _print_block(format_decision_block(dec, votes, rules, llm_rows,
+                                                   verbosity))
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------ #
     # decision cycle
     # ------------------------------------------------------------------ #
     def run_cycle(self) -> Dict[str, Any]:
@@ -237,7 +410,7 @@ class Agent:
                     "decision_uid": decision_uid}
         try:
             try:
-                return self._decide_locked(symbol, source, decision_uid)
+                result = self._decide_locked(symbol, source, decision_uid)
             except Exception as exc:
                 self._event("ERROR", "CYCLE_CRASH",
                             f"decision crashed for {symbol}: {exc}",
@@ -252,8 +425,10 @@ class Agent:
                         outcome="crash", reason=str(exc))
                 except Exception:
                     pass
-                return {"symbol": symbol, "action": "HOLD", "outcome": "crash",
-                        "rate_limited": False, "decision_uid": decision_uid}
+                result = {"symbol": symbol, "action": "HOLD", "outcome": "crash",
+                          "rate_limited": False, "decision_uid": decision_uid}
+            self._emit_decision_output(result)  # observability only; never raises
+            return result
         finally:
             try:
                 lock.release()
@@ -279,6 +454,7 @@ class Agent:
                         f"{symbol}: cannot persist the decision; cycle aborted to HOLD",
                         base)
             return {**base, "action": "HOLD", "outcome": "decision_row_failed"}
+        base["decision_row_id"] = row_id  # every later return carries it
 
         def finish(**fields: Any) -> None:
             try:
@@ -412,7 +588,7 @@ class Agent:
                             f"{symbol}: {vote.action} ({source})",
                             {**base, "action": vote.action,
                              "agreeing": vote.agreeing_models})
-                return {**base, "action": vote.action,
+                return {**base, "action": vote.action, "vote_action": vote.action,
                         "outcome": f"vote_{vote.action}"}
             gr = check_entry(self.db, self.cfg, symbol, vote, guard_snapshot)
             if not gr.allowed:
@@ -423,7 +599,8 @@ class Agent:
                 self._event("INFO", "GUARD_REJECTED",
                             f"{symbol}: entry rejected: {' | '.join(gr.reasons)}",
                             {**base, "rules": gr.reasons})
-                return {**base, "action": "HOLD", "outcome": "guard_rejected"}
+                return {**base, "action": "HOLD", "vote_action": vote.action,
+                       "outcome": "guard_rejected"}
             ctx = EntryContext(decision_id=row_id, size_tmn=gr.size_tmn,
                                stop_pct=gr.stop_pct, target_pct=gr.target_pct,
                                decision_uid=decision_uid,
@@ -450,14 +627,15 @@ class Agent:
                 self._event("INFO", "ENTRY_FAILED",
                             f"{symbol}: entry not executed: {res.reason}",
                             {**base, "reason": res.reason})
-            return {**base, "action": "BUY" if res.ok else "HOLD",
+            return {**base, "action": "BUY" if res.ok else "HOLD", "vote_action": "BUY",
                     "outcome": "entered" if res.ok else f"entry_{res.reason}",
                     "rate_limited": rate_limited, "position_id": res.position_id}
 
         # 4. exit path (position open)
         if not self.cfg.trading.MODELS_VOTE_ON_EXIT:
             finish(final_action="HOLD", outcome="position_open_hold")
-            return {**base, "action": "HOLD", "outcome": "position_open_hold"}
+            return {**base, "action": "HOLD", "outcome": "position_open_hold",
+                       "vote_action": None}
         entry_price = float(my_position.get("entry_price") or 0.0)
         position_summary = {
             "entry_price": entry_price,
@@ -492,13 +670,13 @@ class Agent:
             self._event("INFO", "MODEL_EXIT",
                         f"{symbol}: model SELL executed ({res.reason})",
                         {**base, "pnl_tmn": res.pnl_tmn})
-            return {**base, "action": "SELL",
+            return {**base, "action": "SELL", "vote_action": "SELL",
                     "outcome": "closed" if res.ok else f"close_failed_{res.reason}"}
         finish(final_action=vote.action or "HOLD",
                confidence=vote.confidence_mean, reason="; ".join(vote.reasons),
                votes_json=vjson, input_json=input_json,
                outcome="position_open_hold")
-        return {**base, "action": vote.action or "HOLD",
+        return {**base, "action": vote.action or "HOLD", "vote_action": vote.action,
                 "outcome": "position_open_hold"}
 
     # ------------------------------------------------------------------ #
@@ -522,6 +700,13 @@ class Agent:
                     self._event("ERROR", "SYNC_ERROR", f"sync failed: {exc}", {})
             delay = max(0.0, float(t.DECISION_INTERVAL_SEC) - (self.clock() - started))
             delay = max(delay, self.backoff.delay())
+            try:
+                if int(getattr(t, "CONSOLE_VERBOSITY", 1)) >= 1:
+                    _print_block(f"[NEXT] next scheduled decision in {delay:.0f}s"
+                                 + (" (rate-limit backoff)" if self.backoff.delay() > 0
+                                    else ""))
+            except Exception:
+                pass
             self._sleep_interruptible(delay)
 
     def shutdown(self) -> int:
@@ -600,6 +785,40 @@ def run(args: argparse.Namespace, cfg: config.Config) -> int:
             guardian = Guardian(cfg, store_db, exchange, executor, agent.on_trigger,
                                 run_id=run_id)
             guardian.start()
+            # dashboard thread: never blocks trading; failure is a warning only
+            ui_handle = None
+            ui_reason = None
+            if getattr(args, "no_ui", False):
+                ui_reason = "--no-ui"
+            else:
+                try:
+                    from ui.server import start_ui_thread
+                    ui_handle = start_ui_thread(cfg.storage.DB_PATH,
+                                                args.ui_host, args.ui_port,
+                                                logging.getLogger("ui"),
+                                                cfg.storage.log_file_path)
+                except Exception as exc:
+                    ui_handle = None
+                    ui_reason = str(exc)
+                if ui_handle is None and ui_reason is None:
+                    ui_reason = "port in use"
+            if ui_handle is not None:
+                print(f"UI: {ui_handle.url}")
+                try:
+                    store_db.log_event("INFO", "UI_STARTED",
+                                       f"dashboard at {ui_handle.url}",
+                                       None, run_id)
+                except Exception:
+                    pass
+            else:
+                print(f"UI: disabled ({ui_reason})")
+                if ui_reason != "--no-ui":
+                    try:
+                        store_db.log_event("WARN", "UI_DISABLED",
+                                           f"dashboard failed to start: {ui_reason}",
+                                           None, run_id)
+                    except Exception:
+                        pass
             try:
                 agent.run_forever()
             except KeyboardInterrupt:
@@ -612,6 +831,12 @@ def run(args: argparse.Namespace, cfg: config.Config) -> int:
             finally:
                 guardian.stop()
                 guardian.join(timeout=10.0)
+                # the UI stops AFTER the guardian (positions are handled first)
+                if ui_handle is not None:
+                    try:
+                        ui_handle.stop()
+                    except Exception:
+                        pass
     finally:
         agent.close()
         try:
@@ -625,6 +850,14 @@ def run(args: argparse.Namespace, cfg: config.Config) -> int:
 def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     cfg = config.CONFIG
+    # CLI verbosity overrides (config value stays the single source otherwise)
+    if args.verbose and args.quiet:
+        print("ERROR: --verbose and --quiet are mutually exclusive.", file=sys.stderr)
+        return 2
+    if args.verbose or args.quiet:
+        level = 2 if args.verbose else 0
+        cfg = dataclasses.replace(
+            cfg, trading=dataclasses.replace(cfg.trading, CONSOLE_VERBOSITY=level))
     setup_logging(cfg)
     return run(args, cfg)
 

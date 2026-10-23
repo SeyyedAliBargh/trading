@@ -1,5 +1,6 @@
-"""Tests for execution/guardian.py (STEP P-B PART 2). Fakes; no real sleeping."""
+"""Tests for execution/guardian.py (STEP P-B PART 2 + watch observability). Fakes; no real sleeping."""
 import dataclasses
+import json
 import sqlite3
 import threading
 from datetime import datetime, timedelta, timezone
@@ -11,7 +12,7 @@ import config
 import store.db as store_db
 from exchange.wallex import WallexError, base_asset
 from execution.executor import Executor
-from execution.guardian import Guardian
+from execution.guardian import Guardian, format_watch_line, watch_event_data
 from risk.guard import check_entry
 from tests.fakes import FakeClock, FakeExchange
 
@@ -327,6 +328,150 @@ class TestEventTrigger:
         self.set_mid(fe, SYMBOL, 110.0)
         guard.tick()
         assert triggers == []
+
+
+class TestWatchFormatting:
+    """Pure formatters for the per-symbol guardian watch line/event."""
+
+    def test_flat_line_format(self):
+        line = format_watch_line({"symbol": "XRPTMN", "bid": 30000.0,
+                                  "has_position": False, "move_pct": 0.12,
+                                  "threshold_pct": 0.80, "move_frac": 0.15,
+                                  "cooldown_remaining": 0.0})
+        assert line.startswith("[GUARDIAN] XRPTMN bid=30000")
+        assert "move(window)=+0.12%" in line
+        assert "trigger 0.80%" in line
+        assert "(15%)" in line
+        assert "cooldown=0s" in line
+        assert "no-position" in line
+
+    def test_position_line_format(self):
+        line = format_watch_line({"symbol": "BTCTMN", "bid": 98_800.0,
+                                  "has_position": True, "entry": 100_000.0,
+                                  "sl_price": 98_500.0, "tp_price": 104_500.0,
+                                  "dist_sl_pct": 0.3, "dist_tp_pct": 5.7,
+                                  "ok": True})
+        assert "[GUARDIAN] BTCTMN bid=98800" in line
+        assert "position entry=100000" in line
+        assert "SL=98500 (+0.30%)" in line
+        assert "TP=104500 (+5.70%)" in line
+        assert line.endswith(" OK")
+
+    def test_watch_event_data_fields_flat(self):
+        data = {"symbol": "XRPTMN", "bid": 30000.0, "mid": 30010.0,
+                "has_position": False, "move_pct": 0.5, "move_frac": 0.6,
+                "cooldown_remaining": 12.0, "trigger_fired": False}
+        payload = watch_event_data(data, config.CONFIG.trading)
+        assert payload["symbol"] == "XRPTMN"
+        assert payload["best_bid"] == 30000.0
+        assert payload["mid"] == 30010.0
+        assert payload["has_position"] is False
+        assert payload["trigger_move_pct"] == config.CONFIG.trading.trigger_move_pct
+        assert payload["trigger_window_sec"] == config.CONFIG.trading.trigger_window_sec
+        assert payload["observed_move_pct_signed"] == 0.5
+        assert payload["move_fraction_of_threshold"] == 0.6
+        assert payload["cooldown_remaining_sec"] == 12.0
+        assert payload["trigger_fired"] is False
+        assert "entry" not in payload  # position fields only for positions
+
+    def test_watch_event_data_fields_position(self):
+        data = {"symbol": "BTCTMN", "bid": 99_000.0, "has_position": True,
+                "entry": 100_000.0, "sl_price": 98_500.0, "tp_price": 104_500.0,
+                "dist_sl_pct": 0.5, "dist_tp_pct": 5.5}
+        payload = watch_event_data(data, config.CONFIG.trading)
+        assert payload["has_position"] is True
+        assert payload["entry"] == 100_000.0
+        assert payload["sl_price"] == 98_500.0
+        assert payload["tp_price"] == 104_500.0
+        assert payload["distance_to_sl_pct"] == 0.5
+        assert payload["distance_to_tp_pct"] == 5.5
+
+
+class TestWatchLogging:
+    def test_watch_events_throttled_by_clock(self, temp_db):
+        fe = FakeExchange([SYMBOL, SYMBOL2])
+        fe.balances[BASE] = {"free": 1.0, "locked": 0.0}
+        seed_position(SYMBOL, stop_price=50.0, target_price=10_000.0)
+        guard, ex, fc, triggers = make_guardian(temp_db, fe)
+        guard.tick()                      # first tick: events fire (never seen)
+        after_first = len(events(temp_db, "GUARDIAN_WATCH"))
+        fc.advance(10)                    # 10s < 30s interval: no new events
+        guard.tick()
+        assert len(events(temp_db, "GUARDIAN_WATCH")) == after_first
+        fc.advance(25)                    # 35s since the last write: fires again
+        guard.tick()
+        assert len(events(temp_db, "GUARDIAN_WATCH")) > after_first
+
+    def test_watch_event_contains_required_fields(self, temp_db):
+        fe = FakeExchange([SYMBOL])
+        fe.balances[BASE] = {"free": 1.0, "locked": 0.0}
+        seed_position(SYMBOL, stop_price=50.0, target_price=10_000.0)
+        guard, ex, fc, triggers = make_guardian(temp_db, fe)
+        guard.tick()
+        rows = events(temp_db, "GUARDIAN_WATCH")
+        assert rows
+        data = json.loads(rows[0]["data_json"] or "{}")
+        for key in ("symbol", "best_bid", "mid", "has_position", "trigger_move_pct",
+                    "trigger_window_sec", "observed_move_pct_signed",
+                    "move_fraction_of_threshold", "cooldown_remaining_sec",
+                    "trigger_fired"):
+            assert key in data, f"missing {key} in GUARDIAN_WATCH data"
+        assert data["has_position"] is True
+        for key in ("entry", "sl_price", "tp_price", "distance_to_sl_pct",
+                    "distance_to_tp_pct"):
+            assert key in data, f"missing {key} for an open position"
+
+    def test_watch_console_throttled_and_verbose_per_tick(self, temp_db, capsys):
+        fe = FakeExchange([SYMBOL])
+        guard, ex, fc, triggers = make_guardian(temp_db, fe)  # verbosity 1
+        guard.tick()
+        capsys.readouterr()
+        fc.advance(10)
+        guard.tick()  # within the 30s console interval: no new line
+        assert capsys.readouterr().out.count("[GUARDIAN]") == 0
+        # verbosity 2: a compact line every tick
+        guard2, ex2, fc2, _ = make_guardian(temp_db, FakeExchange([SYMBOL]),
+                                            CONSOLE_VERBOSITY=2)
+        guard2.tick()
+        assert capsys.readouterr().out.count("[GUARDIAN]") >= 1
+        fc2.advance(1)
+        guard2.tick()
+        assert capsys.readouterr().out.count("[GUARDIAN]") >= 1  # every tick
+
+    def test_trigger_line_printed_loudly(self, temp_db, capsys):
+        fe = FakeExchange([SYMBOL, SYMBOL2])
+
+        def set_mid(sym, mid):
+            fe.books[sym] = {"bids": [(mid - 0.1, 10_000.0, 1_000_000.0)],
+                             "asks": [(mid + 0.1, 10_000.0, 1_000_000.0)]}
+
+        guard, ex, fc, triggers = make_guardian(temp_db, fe)
+        set_mid(SYMBOL, 101.0)
+        guard.tick()
+        capsys.readouterr()
+        fc.advance(100)
+        set_mid(SYMBOL, 104.0)
+        guard.tick()
+        out = capsys.readouterr().out
+        assert "[TRIGGER]" in out
+        assert "moved 2.97%" in out
+        assert "-> early decision cycle" in out
+
+    def test_sl_close_logs_loud_line(self, temp_db, capsys):
+        fe = FakeExchange([SYMBOL])
+        fe.balances[BASE] = {"free": 1.0, "locked": 0.0}
+        seed_position(SYMBOL, stop_price=105.0)
+        guard, ex, fc, triggers = make_guardian(temp_db, fe)
+        guard.tick()
+        out = capsys.readouterr().out
+        assert "[CLOSE]" in out and "SL hit" in out
+        assert "bid=" in out
+
+    def test_non_ascii_never_crashes_console(self):
+        import execution.guardian as g
+        g._console("[GUARDIAN] non-ascii line: ...")  # Persian text, ASCII-replaced
+        g._console("[GUARDIAN] \u0633\u0644\u0627\u0645")  # must not raise
+        assert True
 
 
 class TestRateLimitBackoff:
