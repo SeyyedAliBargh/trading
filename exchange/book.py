@@ -36,9 +36,13 @@ def fill_estimate(levels: List[Tuple[float, float, float]], notional_tmn: float)
 
 
 def fill_qty(levels: List[Tuple[float, float, float]], qty: float,
-             max_price: Optional[float] = None) -> Dict:
-    """Walk price levels to fill `qty` units, respecting an optional price cap.
+             max_price: Optional[float] = None,
+             min_price: Optional[float] = None) -> Dict:
+    """Walk price levels to fill `qty` units.
 
+    max_price: BUY cap -- skip levels ABOVE it (ask must be <= limit).
+    min_price: SELL floor -- skip levels BELOW it (bid must be >= limit; a
+    marketable limit sell fills against better bids too).
     Returns dict(filled_qty, avg_price, worst_price, fills, enough_depth).
     fills is a list of (price, qty) tuples in execution order.
     """
@@ -48,6 +52,8 @@ def fill_qty(levels: List[Tuple[float, float, float]], qty: float,
     fills: List[Tuple[float, float]] = []
     for price, level_qty, _ in levels:
         if max_price is not None and price > max_price + 1e-12:
+            break
+        if min_price is not None and price < min_price - 1e-12:
             break
         remaining = qty - filled
         if remaining <= 1e-12:

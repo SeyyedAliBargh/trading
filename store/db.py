@@ -49,9 +49,9 @@ _lock = threading.RLock()
 # Columns that may be set through the update_* functions
 # (id and run_id are immutable; *_json values may be dicts).
 _DECISION_FIELDS = frozenset({
-    "prompt_version", "input_json", "votes_json", "final_action", "confidence",
-    "stop_pct", "target_pct", "reason", "guard_allowed", "outcome",
-    "order_id", "position_id",
+    "prompt_version", "source", "decision_uid", "input_json", "votes_json",
+    "final_action", "confidence", "stop_pct", "target_pct", "reason",
+    "guard_allowed", "outcome", "order_id", "position_id",
 })
 _ORDER_FIELDS = frozenset({
     "decision_id", "position_id", "client_id", "exchange_order_id", "symbol",
@@ -108,6 +108,8 @@ CREATE TABLE IF NOT EXISTS decisions (
     ts TEXT NOT NULL,
     symbol TEXT,
     prompt_version TEXT,
+    source TEXT,
+    decision_uid TEXT,
     input_json TEXT,
     votes_json TEXT,
     final_action TEXT,
@@ -188,7 +190,8 @@ CREATE TABLE IF NOT EXISTS positions (
     close_price REAL,
     close_reason TEXT
         CHECK (close_reason IS NULL OR
-               close_reason IN ('STOP_LOSS', 'TAKE_PROFIT', 'MODEL_SELL', 'MANUAL', 'SHUTDOWN')),
+               close_reason IN ('STOP_LOSS', 'TAKE_PROFIT', 'MODEL_SELL', 'MANUAL',
+                                'SHUTDOWN', 'DUST', 'EXTERNAL')),
     pnl_tmn REAL,
     fees_tmn REAL,
     dry_run INTEGER,
@@ -430,15 +433,18 @@ def insert_decision(run_id: int | None, symbol: str | None = None,
                     confidence: float | None = None, stop_pct: float | None = None,
                     target_pct: float | None = None, reason: str | None = None,
                     guard_allowed: bool | None = None, outcome: str | None = None,
-                    order_id: int | None = None, position_id: int | None = None) -> int | None:
+                    order_id: int | None = None, position_id: int | None = None,
+                    source: str | None = None,
+                    decision_uid: str | None = None) -> int | None:
     return _insert(
         "insert_decision",
-        "INSERT INTO decisions (run_id, ts, symbol, prompt_version, input_json, votes_json, "
-        "final_action, confidence, stop_pct, target_pct, reason, guard_allowed, outcome, "
-        "order_id, position_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (run_id, _utcnow_iso(), symbol, prompt_version, _json(input_json), _json(votes_json),
-         final_action, confidence, stop_pct, target_pct, reason, guard_allowed,
-         outcome, order_id, position_id),
+        "INSERT INTO decisions (run_id, ts, symbol, prompt_version, source, "
+        "decision_uid, input_json, votes_json, final_action, confidence, stop_pct, "
+        "target_pct, reason, guard_allowed, outcome, order_id, position_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (run_id, _utcnow_iso(), symbol, prompt_version, source, decision_uid,
+         _json(input_json), _json(votes_json), final_action, confidence,
+         stop_pct, target_pct, reason, guard_allowed, outcome, order_id, position_id),
     )
 
 

@@ -205,12 +205,14 @@ class PaperExchange:
 
         if side_u == "BUY":
             levels = depth.get("asks", [])
-            cap = price if type_u == "LIMIT" else None
+            cap = price if type_u == "LIMIT" else None   # ask must be <= limit
+            floor = None
         else:
             levels = depth.get("bids", [])
-            cap = price if type_u == "LIMIT" else None
+            cap = None
+            floor = price if type_u == "LIMIT" else None  # bid must be >= limit
 
-        match = book.fill_qty(levels, quantity, max_price=cap)
+        match = book.fill_qty(levels, quantity, max_price=cap, min_price=floor)
         filled_qty = match["filled_qty"]
         fills = match["fills"]
         avg_price = match["avg_price"] or 0.0
@@ -317,6 +319,28 @@ class PaperExchange:
         return {"orders": [self._order_dict(r) for r in rows], "raw": {}}
 
     # ------------------------------------------------------------------ #
+    # Read-only market-data delegations (STEP P-B, additive)
+    # ------------------------------------------------------------------ #
+    def get_depth(self, symbol: str) -> Dict[str, List]:
+        """Real order book via the injected read-only data source."""
+        return self.data_source.get_depth(symbol)
+
+    def get_market_info(self, symbol: str):
+        return self.data_source.get_market_info(symbol)
+
+    def get_fee_for(self, symbol: str) -> Optional[Dict[str, float]]:
+        return self.data_source.get_fee_for(symbol)
+
+    def get_candles(self, symbol: str, resolution: str, from_ts: int, to_ts: int) -> List[Dict]:
+        return self.data_source.get_candles(symbol, resolution, from_ts, to_ts)
+
+    def get_candles_1m(self, symbol: str, from_ts: int, to_ts: int) -> List[Dict]:
+        return self.data_source.get_candles_1m(symbol, from_ts, to_ts)
+
+    def get_candles_1h(self, symbol: str, from_ts: int, to_ts: int) -> List[Dict]:
+        return self.data_source.get_candles_1h(symbol, from_ts, to_ts)
+
+    # ------------------------------------------------------------------ #
     # resting-order matching
     # ------------------------------------------------------------------ #
     def check_open_orders(self) -> None:
@@ -337,22 +361,23 @@ class PaperExchange:
                 depth = self._depth(symbol)
             except Exception:
                 continue
-            if side == "BUY":
-                levels = depth.get("asks", [])
-                best = levels[0][0] if levels else None
-                if best is None or best > price:
-                    continue
-            else:
-                levels = depth.get("bids", [])
-                best = levels[0][0] if levels else None
-                if best is None or best < price:
-                    continue
             filled = float(row.get("filled_quantity") or 0.0)
             orig = float(row.get("quantity") or 0.0)
             remaining = orig - filled
             if remaining <= 1e-9:
                 continue
-            match = book.fill_qty(levels, remaining, max_price=price)
+            if side == "BUY":
+                levels = depth.get("asks", [])
+                best = levels[0][0] if levels else None
+                if best is None or best > price:
+                    continue
+                match = book.fill_qty(levels, remaining, max_price=price)
+            else:
+                levels = depth.get("bids", [])
+                best = levels[0][0] if levels else None
+                if best is None or best < price:
+                    continue
+                match = book.fill_qty(levels, remaining, min_price=price)
             add_qty = match["filled_qty"]
             if add_qty <= 1e-9:
                 continue

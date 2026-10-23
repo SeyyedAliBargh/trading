@@ -161,13 +161,31 @@ class TestPaperExchange:
         assets = acct.get("assets", {})
         assets["BTC"] = {"free": 1.0, "locked": 0.0}
         store_db.set_paper_account(acct["tmn_balance"], assets)
-        paper.create_order("BTCTMN", "SELL", "LIMIT", 1.0, 101.0)
-        # bid rises to 102
+        # SELL limit above the bid rests (bid 99 < limit 101)
+        res = paper.create_order("BTCTMN", "SELL", "LIMIT", 1.0, 101.0)
+        assert res["order"]["status"] == PaperStatus.NEW
+        assert res["order"]["executedQty"] == 0.0
+        # bid rises to 102 -> the resting sell fills against it
         ds.get_depth.return_value = {"bids": [(102.0, 5.0, 510.0)],
                                      "asks": [(103.0, 5.0, 515.0)]}
         paper.check_open_orders()
         rows = store_db.get_orders_by_status([PaperStatus.FILLED], True)
         assert rows and rows[0]["status"] == PaperStatus.FILLED
+
+    def test_marketable_limit_sell_fills_immediately(self, temp_db):
+        """STEP P-B regression: a LIMIT SELL at/below the best bid is marketable
+        and must fill against the (better) bid, not rest."""
+        ds = make_data_source()
+        paper = make_paper(temp_db, ds)
+        acct = store_db.get_paper_account()
+        assets = acct.get("assets", {})
+        assets["BTC"] = {"free": 1.0, "locked": 0.0}
+        store_db.set_paper_account(acct["tmn_balance"], assets)
+        res = paper.create_order("BTCTMN", "SELL", "LIMIT", 1.0, 99.0)
+        o = res["order"]
+        assert o["status"] == PaperStatus.FILLED
+        assert o["executedQty"] == 1.0
+        assert o["executedPrice"] == 99.0  # best bid 99, limit floor 99
 
     def test_check_open_orders_partial(self, temp_db):
         ds = make_data_source()
@@ -263,3 +281,20 @@ class TestPaperExchange:
         rows = store_db.get_orders_by_status(
             [PaperStatus.FILLED, PaperStatus.NEW, PaperStatus.PARTIALLY_FILLED], True)
         assert rows
+
+    # ---- STEP P-B read-only delegations -------------------------------- #
+    def test_market_data_delegations_hit_data_source(self, temp_db):
+        ds = make_data_source()
+        paper = make_paper(temp_db, ds)
+        paper.get_depth("BTCTMN")
+        paper.get_market_info("BTCTMN")
+        paper.get_fee_for("BTCTMN")
+        paper.get_candles("BTCTMN", "15", 1, 2)
+        paper.get_candles_1m("BTCTMN", 1, 2)
+        paper.get_candles_1h("BTCTMN", 1, 2)
+        assert ds.get_depth.call_count == 1
+        assert ds.get_market_info.call_count == 1
+        assert ds.get_fee_for.call_count >= 1
+        assert ds.get_candles.call_count == 1
+        assert ds.get_candles_1m.call_count == 1
+        assert ds.get_candles_1h.call_count == 1

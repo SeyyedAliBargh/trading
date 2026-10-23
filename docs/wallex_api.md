@@ -664,6 +664,17 @@ Consequences in code: `WallexClient.get_candles_1m()` uses resolution `"15"`, `g
 
 ---
 
+## Real order-probe findings, round 3 (STEP P-B — first successful live round-trip)
+
+- **Status strings seen live:** `NEW` (with `active=true` right after create) and `CANCELED` (with `active=false` after cancel). `FILLED` / `PARTIALLY_FILLED` have **not yet been seen live** — therefore the executor relies ONLY on `active` and `executedQty`, never on status strings.
+- **Accepted order size:** a LIMIT BUY with notional **85,200 TMN** was accepted → the (undocumented) spot minimum order is **below 85,000 TMN**.
+- **Cancel works by client_id** (`DELETE /v1/account/orders/{client_id}`); `GET /v1/account/openOrders` went from 1 → 0 after the cancel.
+- **`error_code 1006`** = insufficient balance (`"موجودی شما کافی نیست..."`).
+- **MARKET orders without `price` remain unverified** (the probe used LIMIT only). The executor tries MARKET first on exits and keeps a per-symbol fallback if it is rejected.
+- **`is_market_type_enable` semantics still unverified** (SOL and XRP show `false`); treated as "possibly MARKET-disabled" but not assumed.
+
+---
+
 ## Where each file applies
 
 | Source | What it contributes to this document |

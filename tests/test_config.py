@@ -69,6 +69,20 @@ class TestConfigLoads:
         assert config.CONFIG.trading.manual_target_pct == 0.03
         assert config.CONFIG.trading.LLM_JSON_MODE is False
         assert config.CONFIG.trading.probe_default_symbol == "XRPTMN"
+        # STEP P-B execution-layer tunables
+        assert config.CONFIG.trading.balance_snapshot_interval_sec == 60
+        assert config.CONFIG.trading.order_poll_interval_sec == 1.5
+        assert config.CONFIG.trading.close_fill_timeout_sec == 10
+        assert config.CONFIG.trading.close_retry_backoff_sec == 2
+        assert config.CONFIG.trading.close_retry_backoff_cap_sec == 30
+        assert config.CONFIG.trading.close_limit_ticks == 3
+        assert config.CONFIG.trading.ratelimit_backoff_start_sec == 2
+        assert config.CONFIG.trading.ratelimit_backoff_cap_sec == 60
+        assert config.CONFIG.trading.sync_interval_sec == 300
+        assert config.CONFIG.trading.heartbeat_interval_sec == 300
+        assert config.CONFIG.storage.log_file_path == "runtime/agent.log"
+        # per-model LLM timeout: 20s (observed model latency 3.4-7.3s)
+        assert config.CONFIG.llm.per_model_timeout_sec == 20
         assert config.CONFIG.risk.per_trade_fraction == 0.20
         assert config.CONFIG.risk.max_positions == 2
         assert config.CONFIG.risk.max_daily_loss_fraction == 0.03
@@ -185,6 +199,40 @@ class TestValidateValueErrors:
             config.validate_config(make_config(risk={"min_order_tmn": 0}))
         with pytest.raises(ValueError, match="min_order_tmn"):
             config.validate_config(make_config(risk={"min_order_tmn": -1.0}))
+
+    def test_step_pb_tunables_must_be_positive(self):
+        for key in ("balance_snapshot_interval_sec", "sync_interval_sec",
+                    "heartbeat_interval_sec", "order_poll_interval_sec",
+                    "close_fill_timeout_sec", "close_retry_backoff_sec",
+                    "close_retry_backoff_cap_sec", "ratelimit_backoff_start_sec",
+                    "ratelimit_backoff_cap_sec"):
+            with pytest.raises(ValueError, match=key):
+                config.validate_config(make_config(trading={key: 0}))
+
+    def test_close_limit_ticks_non_negative(self):
+        with pytest.raises(ValueError, match="close_limit_ticks"):
+            config.validate_config(make_config(trading={"close_limit_ticks": -1}))
+
+    def test_backoff_start_must_not_exceed_cap(self):
+        with pytest.raises(ValueError, match="close_retry_backoff_sec"):
+            config.validate_config(make_config(
+                trading={"close_retry_backoff_sec": 40,
+                         "close_retry_backoff_cap_sec": 30}))
+        with pytest.raises(ValueError, match="ratelimit_backoff_start_sec"):
+            config.validate_config(make_config(
+                trading={"ratelimit_backoff_start_sec": 70,
+                          "ratelimit_backoff_cap_sec": 60}))
+
+    def test_poll_interval_above_entry_timeout_warns(self):
+        with pytest.warns(UserWarning, match="order_poll_interval_sec"):
+            config.validate_config(make_config(
+                trading={"order_poll_interval_sec": 20.0,
+                          "entry_fill_timeout_sec": 10}))
+
+    def test_log_file_path_outside_runtime_warns(self):
+        with pytest.warns(UserWarning, match="log_file_path"):
+            config.validate_config(make_config(
+                storage={"log_file_path": "logs/agent.log"}))
 
     def test_clean_config_passes_silently(self):
         with warnings.catch_warnings():

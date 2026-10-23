@@ -276,6 +276,32 @@ class TestDecisionReads:
         assert [r["id"] for r in store_db.get_recent_decisions("ETHTMN", 5, "paper")] == [d4]
         assert store_db.get_recent_decisions("NOPE", 5, "paper") == []
 
+    def test_decision_source_and_uid_columns(self, db):
+        run_id = store_db.start_run("paper", {}, git_commit="test")
+        d = store_db.insert_decision(run_id, symbol="BTCTMN", source="TRIGGER",
+                                     decision_uid="c" * 32, final_action="HOLD",
+                                     outcome="skipped_lock_busy",
+                                     reason="symbol lock busy")
+        assert d is not None
+        row = store_db.get_recent_decisions("BTCTMN", 5, "paper")[0]
+        assert row["source"] == "TRIGGER"
+        assert row["decision_uid"] == "c" * 32
+        assert row["outcome"] == "skipped_lock_busy"
+        # both columns are updatable through the guarded update path
+        assert store_db.update_decision(d, source="SCHEDULE", outcome="vote_HOLD")
+        row = store_db.get_recent_decisions("BTCTMN", 5, "paper")[0]
+        assert row["source"] == "SCHEDULE"
+        assert row["outcome"] == "vote_HOLD"
+
+    def test_close_reason_accepts_dust_and_external(self, db):
+        run_id = store_db.start_run("paper", {}, git_commit="test")
+        p1 = store_db.insert_position(run_id, symbol="BTCTMN", dry_run=True)
+        p2 = store_db.insert_position(run_id, symbol="ETHTMN", dry_run=True)
+        assert store_db.close_position(p1, 0.0, "DUST", -100.0, 0.0)
+        assert store_db.close_position(p2, 0.0, "EXTERNAL", -50.0, 0.0)
+        assert store_db.get_position(p1)["close_reason"] == "DUST"
+        assert store_db.get_position(p2)["close_reason"] == "EXTERNAL"
+
 
 class TestUniqueClientId:
     def test_duplicate_client_id_returns_none(self, db, capsys):

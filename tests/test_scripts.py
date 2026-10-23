@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ["probe_readonly", "probe_orders", "probe_llm", "reset_paper"]
+SCRIPTS = ["probe_readonly", "probe_orders", "probe_llm", "report", "reset_paper"]
 
 
 def _run(args, cwd):

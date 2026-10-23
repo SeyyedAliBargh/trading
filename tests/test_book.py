@@ -46,6 +46,21 @@ class TestFillQty:
         assert res["filled_qty"] == 1.0
         assert res["enough_depth"] is False
 
+    def test_min_price_sell_floor(self):
+        # STEP P-B regression: a marketable LIMIT SELL (price <= best bid)
+        # must fill against bids at or above the limit
+        levels = [(100.0, 5.0, 500.0), (98.0, 5.0, 490.0)]
+        res = fill_qty(levels, 2.0, min_price=97.0)
+        assert res["filled_qty"] == 2.0
+        assert res["avg_price"] == pytest.approx(100.0)
+
+    def test_min_price_skips_bids_below_limit(self):
+        # bids below the sell limit must NOT fill the order
+        levels = [(99.0, 5.0, 495.0), (98.0, 5.0, 490.0)]
+        res = fill_qty(levels, 2.0, min_price=101.0)
+        assert res["filled_qty"] == 0.0
+        assert res["enough_depth"] is False
+
 
 class TestEntryLimitPrice:
     def test_within_slippage(self):

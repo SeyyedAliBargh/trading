@@ -129,6 +129,26 @@ class TradingConfig:
     # used only if it is also in SYMBOLS, otherwise the probe falls back to
     # the lowest-priced CONFIG.SYMBOLS entry.
     probe_default_symbol: str = "XRPTMN"
+    # Seconds between guardian writes of a balance_snapshots row.
+    balance_snapshot_interval_sec: int = 60
+    # Seconds between order-status polls while waiting for a fill.
+    order_poll_interval_sec: float = 1.5
+    # Seconds to wait for a closing order to fill before cancelling the rest.
+    close_fill_timeout_sec: float = 10
+    # Backoff between closing attempts: starts at close_retry_backoff_sec and
+    # doubles up to close_retry_backoff_cap_sec (never exceeds it).
+    close_retry_backoff_sec: float = 2
+    close_retry_backoff_cap_sec: float = 30
+    # Marketable LIMIT SELL fallback price = best_bid - close_limit_ticks ticks;
+    # unfilled retries escalate by another close_limit_ticks each time.
+    close_limit_ticks: int = 3
+    # Backoff after a Wallex 429 on the decision path: start / cap, seconds.
+    ratelimit_backoff_start_sec: float = 2
+    ratelimit_backoff_cap_sec: float = 60
+    # Seconds between executor.sync_with_exchange() reconciliation runs.
+    sync_interval_sec: int = 300
+    # Seconds between guardian "still alive" heartbeat events.
+    heartbeat_interval_sec: int = 300
     # Starting balance of the paper account, in toman (paper mode only).
     paper_initial_capital_tmn: float = 5_000_000
     # conservative placeholder taker fee used in paper mode only if GET /v1/account/fee fails; replace after the real fee is known
@@ -178,10 +198,12 @@ class RiskConfig:
 
 @dataclass(frozen=True)
 class StorageConfig:
-    """SQLite state storage."""
+    """SQLite state storage and runtime logs."""
 
     # Path of the SQLite database (WAL mode) in the git-ignored runtime/ directory.
     DB_PATH: str = "runtime/agent.db"
+    # Rotating log file for console-mirrored runtime logging (runtime/ directory).
+    log_file_path: str = "runtime/agent.log"
 
 
 @dataclass(frozen=True)
@@ -250,12 +272,47 @@ def validate_config(cfg: Config) -> None:
             "the order probe will fall back to the lowest-priced configured symbol",
             stacklevel=2,
         )
+    if not cfg.storage.log_file_path.startswith("runtime"):
+        warnings.warn(
+            f"log_file_path ({cfg.storage.log_file_path}) is not under runtime/; "
+            "logs are supposed to live in the git-ignored runtime directory",
+            stacklevel=2,
+        )
     if not (0 <= r.min_net_edge_pct <= 0.05):
         raise ValueError(
             f"min_net_edge_pct ({r.min_net_edge_pct}) must be in [0, 0.05]"
         )
     if r.min_order_tmn <= 0:
         raise ValueError(f"min_order_tmn ({r.min_order_tmn}) must be > 0")
+    # --- STEP P-B execution-layer tunables --------------------------------
+    for name in ("balance_snapshot_interval_sec", "sync_interval_sec",
+                 "heartbeat_interval_sec"):
+        if getattr(t, name) <= 0:
+            raise ValueError(f"{name} ({getattr(t, name)}) must be > 0")
+    for name in ("order_poll_interval_sec", "close_fill_timeout_sec",
+                 "close_retry_backoff_sec", "close_retry_backoff_cap_sec",
+                 "ratelimit_backoff_start_sec", "ratelimit_backoff_cap_sec"):
+        if getattr(t, name) <= 0:
+            raise ValueError(f"{name} ({getattr(t, name)}) must be > 0")
+    if t.close_limit_ticks < 0:
+        raise ValueError(f"close_limit_ticks ({t.close_limit_ticks}) must be >= 0")
+    if t.close_retry_backoff_sec > t.close_retry_backoff_cap_sec:
+        raise ValueError(
+            f"close_retry_backoff_sec ({t.close_retry_backoff_sec}) > "
+            f"close_retry_backoff_cap_sec ({t.close_retry_backoff_cap_sec})"
+        )
+    if t.ratelimit_backoff_start_sec > t.ratelimit_backoff_cap_sec:
+        raise ValueError(
+            f"ratelimit_backoff_start_sec ({t.ratelimit_backoff_start_sec}) > "
+            f"ratelimit_backoff_cap_sec ({t.ratelimit_backoff_cap_sec})"
+        )
+    if t.order_poll_interval_sec > t.entry_fill_timeout_sec:
+        warnings.warn(
+            f"order_poll_interval_sec ({t.order_poll_interval_sec}) > "
+            f"entry_fill_timeout_sec ({t.entry_fill_timeout_sec}): the entry "
+            "poll loop may get no status read before the timeout",
+            stacklevel=2,
+        )
 
     # --- soft warnings (never raise) ----------------------------------------
     if r.target_pct_min < r.min_reward_risk * r.stop_pct_min:
